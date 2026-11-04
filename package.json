@@ -1,0 +1,17 @@
+{
+  "name": "membrane-fetch",
+  "version": "1.0.0",
+  "description": "Vision-based autonomous robot fetch simulator with Three.js, Node relay, and Claude agent",
+  "type": "module",
+  "main": "engine/server.js",
+  "scripts": {
+    "start": "node engine/server.js",
+    "watch": "node --watch engine/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "three": "^0.160.0",
+    "ws": "^8.17.0"
+  }
+}
+

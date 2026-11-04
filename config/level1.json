@@ -1,0 +1,81 @@
+{
+  "room": {
+    "size": 6.0,
+    "wall_height": 2.5
+  },
+  "zone": {
+    "center": [2.0, 1.8],
+    "size": 1.2,
+    "color": "#10b981"
+  },
+  "robot": {
+    "start": [-2.4, 0.0],
+    "heading": 0.0,
+    "radius": 0.2,
+    "camera": {
+      "forward_offset": 0.2,
+      "height": 0.5,
+      "pitch_deg": -10.0,
+      "hfov_deg": 90.0,
+      "aspect": 1.3333333333333333
+    }
+  },
+  "objects": [
+    {
+      "id": "obj_1",
+      "shape": "cube",
+      "color": "red",
+      "hex": "#e11d48",
+      "size": 0.30,
+      "height": 0.30,
+      "pos": [-0.5, -1.5]
+    },
+    {
+      "id": "obj_2",
+      "shape": "sphere",
+      "color": "red",
+      "hex": "#f43f5e",
+      "size": 0.30,
+      "height": 0.30,
+      "pos": [0.8, -0.4]
+    },
+    {
+      "id": "obj_3",
+      "shape": "cube",
+      "color": "blue",
+      "hex": "#2563eb",
+      "size": 0.25,
+      "height": 0.25,
+      "pos": [-0.8, 1.4]
+    },
+    {
+      "id": "obj_4",
+      "shape": "sphere",
+      "color": "blue",
+      "hex": "#3b82f6",
+      "size": 0.30,
+      "height": 0.30,
+      "pos": [0.4, 1.6]
+    },
+    {
+      "id": "obj_5",
+      "shape": "cylinder",
+      "color": "yellow",
+      "hex": "#eab308",
+      "size": 0.24,
+      "height": 0.60,
+      "pos": [1.6, -1.8],
+      "lid_ring": true
+    },
+    {
+      "id": "obj_6",
+      "shape": "cone",
+      "color": "orange",
+      "hex": "#f97316",
+      "size": 0.30,
+      "height": 0.45,
+      "pos": [-1.2, -0.2]
+    }
+  ]
+}
+
