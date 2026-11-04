@@ -123,19 +123,47 @@
       <!-- AI Control Center with Mode Tabs -->
       <div class="ai-tabs-container">
         <div class="ai-tab-buttons">
-          <button id="tabBtnPoll" class="ai-tab active">
-            🌸 Pollinations AI (Frontier Vision)
-          </button>
-          <button id="tabBtnOllama" class="ai-tab">
-            🦙 Local Ollama (GPU Offline)
+          <button id="tabBtnAg" class="ai-tab active" style="color: #38bdf8; border-bottom: 2px solid #38bdf8;">
+            ⚡ Antigravity / Easy CLI (Claude Frontier)
           </button>
           <button id="tabBtnManual" class="ai-tab">
             🎮 Manual Teleop Controls
           </button>
+          <button id="tabBtnPoll" class="ai-tab" style="font-size: 11px; opacity: 0.8;">
+            🌸 Pollinations AI (Legacy)
+          </button>
+          <button id="tabBtnOllama" class="ai-tab" style="font-size: 11px; opacity: 0.8;">
+            🦙 Local Ollama (Offline)
+          </button>
+        </div>
+
+        <!-- Tab 0: Antigravity / Easy CLI Frontier AI -->
+        <div id="tabContentAg" class="ai-tab-panel active">
+          <div class="ollama-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="ag-badge" style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; letter-spacing: 0.05em;">⚡ ANTIGRAVITY FRONTIER VLM</span>
+              <span id="agStatusText" style="font-size: 12px; color: #34d399;">🟢 Easy CLI Proxy Connected (127.0.0.1:8317)</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <label style="font-size: 11px; color: #94a3b8;">Model:</label>
+              <select id="agModelSelect" class="ollama-select" style="border-color: rgba(56, 189, 248, 0.5);">
+                <option value="claude-sonnet-4-6" selected>claude-sonnet-4-6 (Frontier Spatial Vision)</option>
+                <option value="claude-opus-4-6-thinking">claude-opus-4-6-thinking (Deep Reasoning & Vision)</option>
+                <option value="gemini-3.8-flash-high">gemini-3.8-flash-high (Gemini High-Speed Vision)</option>
+                <option value="gemini-3-flash">gemini-3-flash (Gemini Standard Vision)</option>
+                <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Ultra Lightweight)</option>
+              </select>
+            </div>
+          </div>
+          <div class="command-row">
+            <input type="text" id="agCommandInput" class="command-input" placeholder="Enter fetch instruction, e.g. 'Bring the round red thing'..." value="Bring the round red thing" style="border-color: rgba(56, 189, 248, 0.4);">
+            <button id="btnAgStart" class="action-btn" style="background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; font-weight: 700; border: 1px solid #38bdf8;">⚡ Run Antigravity [Enter]</button>
+            <button id="btnAgStop" class="action-btn btn-fail" style="display: none;">⏹ Stop</button>
+          </div>
         </div>
 
         <!-- Tab 1: Pollinations AI -->
-        <div id="tabContentPoll" class="ai-tab-panel active">
+        <div id="tabContentPoll" class="ai-tab-panel" style="display: none;">
           <div class="ollama-header">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span class="poll-badge">🌸 POLLINATIONS MULTIMODAL VLM</span>

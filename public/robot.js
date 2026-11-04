@@ -208,7 +208,7 @@ export class Robot {
       this.setState('Go to object');
     }
 
-    const speed = 1.0; // 1 m/s
+    const speed = 2.0; // 2.0 m/s snappy physical speed
     const dt = 1 / 60; // 60 Hz fixed sim step
     const stepDist = speed * dt; // ~0.0167 m per tick
 
@@ -279,7 +279,7 @@ export class Robot {
       this.setState(this.prevState === 'Blocked' ? 'Locate' : this.prevState);
     }
 
-    const turnSpeed = 90.0; // 90 deg/s
+    const turnSpeed = 180.0; // 180 deg/s snappy rotation
     const dt = 1 / 60;
     const stepDeg = turnSpeed * dt; // 1.5 deg per tick
 

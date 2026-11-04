@@ -247,6 +247,394 @@ adminApp.get('/admin/result', async (req, res) => {
   }
 });
 
+// ==================== ANTIGRAVITY / EASY CLI RUNNER ====================
+let isAntigravityRunning = false;
+let abortAntigravity = false;
+
+// GET /api/antigravity/status
+agentApp.get('/api/antigravity/status', async (req, res) => {
+  const proxyUrl = req.query.proxyUrl || process.env.ANTIGRAVITY_BASE_URL || 'http://127.0.0.1:8317/v1';
+  const apiKey = req.query.apiKey || process.env.ANTIGRAVITY_API_KEY || '12345';
+  try {
+    const r = await fetch(`${proxyUrl.replace(/\/+$/, '')}/models`, {
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(3000)
+    });
+    if (r.ok) {
+      const data = await r.json();
+      return res.json({
+        connected: true,
+        proxyUrl,
+        models: data.data || [],
+        isRunning: isAntigravityRunning
+      });
+    }
+  } catch (e) {}
+  res.json({
+    connected: false,
+    proxyUrl,
+    models: [],
+    isRunning: isAntigravityRunning
+  });
+});
+
+// POST /api/antigravity/stop
+agentApp.post('/api/antigravity/stop', (req, res) => {
+  abortAntigravity = true;
+  isAntigravityRunning = false;
+  res.json({ ok: true, status: 'Stopped' });
+});
+
+// POST /api/antigravity/start
+agentApp.post('/api/antigravity/start', async (req, res) => {
+  if (isAntigravityRunning) {
+    return res.status(409).json({ error: 'An Antigravity run is already active' });
+  }
+
+  const proxyUrl = req.body.proxyUrl || process.env.ANTIGRAVITY_BASE_URL || 'http://127.0.0.1:8317/v1';
+  const apiKey = req.body.apiKey || process.env.ANTIGRAVITY_API_KEY || '12345';
+  const command = req.body.command || 'Bring the round red thing';
+  const model = req.body.model || 'claude-sonnet-4-6';
+
+  isAntigravityRunning = true;
+  abortAntigravity = false;
+
+  res.json({ ok: true, status: 'Started', command, model });
+
+  (async () => {
+    const broadcast = (data) => {
+      if (engineSocket && engineSocket.readyState === 1) {
+        engineSocket.send(JSON.stringify({ type: 'antigravity_update', ...data }));
+      }
+    };
+
+    try {
+      console.log(`[Antigravity Agent] Starting run with '${model}' via ${proxyUrl} for: "${command}"`);
+      await callEngine('setCommand', { text: command });
+
+      const MAX_STEPS = 25;
+      let frame = await callEngine('look');
+      let base64Img = frame.jpegBase64 || frame;
+      if (typeof base64Img === 'string' && base64Img.startsWith('data:image')) {
+        base64Img = base64Img.split(',')[1];
+      }
+
+      const toolsSchema = [
+        {
+          type: "function",
+          function: {
+            name: "move",
+            description: "Drive robot forward (positive distance) or backward (negative) by exact metres (e.g. 0.5, 1.0, 1.5). Scale: 1 floor block tile = 0.5m.",
+            parameters: {
+              type: "object",
+              properties: {
+                distance: { type: "number", description: "Exact distance to travel in metres" },
+                observations: { type: "string", description: "Visual analysis of the scene" },
+                target: { type: "string", description: "Target being approached or bypassed" },
+                confidence: { type: "number", description: "0.0 to 1.0" }
+              },
+              required: ["distance", "observations", "target", "confidence"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "turn",
+            description: "Rotate robot in place by exact degrees. Positive = clockwise (right), negative = counter-clockwise (left). 90° FOV camera means ~7 pixels per degree.",
+            parameters: {
+              type: "object",
+              properties: {
+                degrees: { type: "number", description: "Exact degrees to turn (e.g. -25, 30, 90, 180)" },
+                observations: { type: "string", description: "Visual scene analysis" },
+                target: { type: "string", description: "Target heading" },
+                confidence: { type: "number", description: "0.0 to 1.0" }
+              },
+              required: ["degrees", "observations", "target", "confidence"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "read_depth",
+            description: "Measures center horizontal laser ray distance straight ahead up to 10 metres.",
+            parameters: {
+              type: "object",
+              properties: {
+                observations: { type: "string", description: "Depth check reason" },
+                target: { type: "string", description: "Target" },
+                confidence: { type: "number", description: "0.0 to 1.0" }
+              },
+              required: ["observations", "target", "confidence"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "pickup",
+            description: "Grasp object directly in front. Only succeeds when target distance is <= 0.55m.",
+            parameters: {
+              type: "object",
+              properties: {
+                observations: { type: "string", description: "Close target confirmation" },
+                target: { type: "string", description: "Object being picked up" },
+                confidence: { type: "number", description: "0.0 to 1.0" }
+              },
+              required: ["observations", "target", "confidence"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "drop",
+            description: "Release held object into the green drop zone on the floor.",
+            parameters: {
+              type: "object",
+              properties: {
+                observations: { type: "string", description: "Drop zone confirmation" },
+                target: { type: "string", description: "Green drop zone" },
+                confidence: { type: "number", description: "0.0 to 1.0" }
+              },
+              required: ["observations", "target", "confidence"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "done",
+            description: "End mission successfully once object is deposited in the green zone.",
+            parameters: {
+              type: "object",
+              properties: {
+                observations: { type: "string", description: "Mission completion summary" },
+                target: { type: "string", description: "Completed target" },
+                confidence: { type: "number", description: "1.0" }
+              },
+              required: ["observations", "target", "confidence"]
+            }
+          }
+        }
+      ];
+
+      function pruneOlderImages(msgs) {
+        let seen = false;
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          const m = msgs[i];
+          if (Array.isArray(m.content)) {
+            for (let j = 0; j < m.content.length; j++) {
+              if (m.content[j].type === 'image_url') {
+                if (seen) {
+                  m.content[j] = { type: 'text', text: '[earlier frame omitted]' };
+                }
+                seen = true;
+              }
+            }
+          }
+        }
+      }
+
+      const messages = [
+        {
+          role: "system",
+          content: `You are the autonomous navigation controller of a mobile AMR robot in a 6.0m x 6.0m arena.
+Your physical specifications:
+- Forward Camera: 90° horizontal FOV, 640x480 resolution. Center reticle is at x=320, y=240.
+  Rotation scale: ~7 pixels horizontally per 1° degree of rotation.
+  Clockwise (right) is positive degrees (+), counter-clockwise (left) is negative degrees (-).
+- Laser Rangefinder: Measures exact line-of-sight distance straight ahead at center reticle.
+- Floor Grid: Floor tiles are 0.5m x 0.5m squares ("blocks"). 2 blocks = 1.0m, 4 blocks = 2.0m.
+- Gripper: Effective grasp reach is 0.55m. Attempting pickup when distance > 0.55m will FAIL.
+
+Navigation & Obstacle Avoidance Protocol:
+1. Scan & Locate: Look at the 3D first-person image. Note where the target object is.
+2. Occlusion Bypass: If an obstacle (e.g. orange traffic cone) sits directly in front of your path to the target, DO NOT ram it. Steer sideways (e.g. turn -30° or +30°), drive forward 0.6m, then turn back toward the target to bypass it with clear line of sight.
+3. Approach: Use laser depth to gauge distance. Advance smoothly until depth reading is between 0.40m and 0.50m.
+4. Grasp: Call pickup() when depth is <= 0.55m and target is directly centered.
+5. Deposit: Once holding the object, rotate until the flat glowing green square drop zone on the floor is centered, advance onto it, call drop(), and then done().`
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: `Command: "${command}". Here is your starting onboard camera view:` },
+            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Img}`, detail: "low" } }
+          ]
+        }
+      ];
+
+      for (let step = 1; step <= MAX_STEPS; step++) {
+        if (abortAntigravity) {
+          console.log('[Antigravity Agent] Aborted.');
+          broadcast({ state: 'ABORTED', step });
+          break;
+        }
+
+        pruneOlderImages(messages);
+
+        const depthData = await callEngine('depth');
+        const stateData = await callEngine('state');
+        const currentDepth = depthData.depth;
+        const isHolding = stateData.holding;
+
+        broadcast({ state: 'THINKING', step, depth: currentDepth, holding: isHolding });
+        const startTime = Date.now();
+
+        const chatEndpoint = `${proxyUrl.replace(/\/+$/, '')}/chat/completions`;
+        const resp = await fetch(chatEndpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: messages,
+            tools: toolsSchema,
+            tool_choice: "auto",
+            temperature: 0.1,
+            max_tokens: 1000
+          })
+        });
+
+        if (!resp.ok) {
+          const errText = await resp.text();
+          console.error('[Antigravity Error]:', resp.status, errText);
+          broadcast({ state: 'ERROR', error: `HTTP ${resp.status}: ${errText}` });
+          break;
+        }
+
+        const resData = await resp.json();
+        const choice = resData.choices?.[0];
+        const resMsg = choice?.message || {};
+        messages.push(resMsg);
+        const elapsedMs = Date.now() - startTime;
+
+        let toolName = null;
+        let toolArgs = {};
+        let observations = '';
+        let confidence = 0.9;
+        let callId = `call_${step}`;
+
+        if (resMsg.tool_calls && resMsg.tool_calls.length > 0) {
+          const call = resMsg.tool_calls[0];
+          callId = call.id || callId;
+          toolName = call.function?.name;
+          try {
+            toolArgs = typeof call.function?.arguments === 'string'
+              ? JSON.parse(call.function.arguments)
+              : (call.function?.arguments || {});
+          } catch (e) {
+            toolArgs = {};
+          }
+          observations = toolArgs.observations || resMsg.content || '';
+          confidence = toolArgs.confidence !== undefined ? toolArgs.confidence : 0.9;
+        } else {
+          // Fallback parsing from text
+          const rawText = resMsg.content || '';
+          observations = rawText;
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            try {
+              const p = JSON.parse(jsonMatch[0]);
+              toolName = p.tool || p.name;
+              toolArgs = p.args || p.parameters || {};
+              observations = p.observations || rawText;
+              confidence = p.confidence || 0.8;
+            } catch (e) {}
+          }
+          if (!toolName) {
+            toolName = 'read_depth';
+            toolArgs = {};
+          }
+        }
+
+        console.log(`[Antigravity Step ${step}] ${toolName}`, toolArgs, `(Latency: ${elapsedMs}ms)`);
+
+        let actionResult = null;
+        if (toolName === 'turn') {
+          const deg = toolArgs.degrees !== undefined ? Number(toolArgs.degrees) : (toolArgs.angle !== undefined ? Number(toolArgs.angle) : 45);
+          actionResult = await callEngine('turn', { degrees: isNaN(deg) ? 45 : deg });
+        } else if (toolName === 'move') {
+          const dist = toolArgs.distance !== undefined ? Number(toolArgs.distance) : (toolArgs.amount !== undefined ? Number(toolArgs.amount) : 0.5);
+          actionResult = await callEngine('move', { distance: isNaN(dist) ? 0.5 : dist });
+        } else if (toolName === 'read_depth' || toolName === 'depth') {
+          actionResult = await callEngine('depth');
+        } else if (toolName === 'pickup') {
+          actionResult = await callEngine('pickup');
+        } else if (toolName === 'drop') {
+          actionResult = await callEngine('drop');
+        } else if (toolName === 'done') {
+          actionResult = { ok: true };
+          broadcast({ state: 'COMPLETED', step, tool: 'done', observations, latencyMs: elapsedMs });
+          break;
+        }
+
+        // Fetch post-action telemetry
+        const postState = await callEngine('state');
+        const postDepth = await callEngine('depth');
+        const latestDepth = postDepth.depth;
+        const latestHolding = postState.holding;
+
+        broadcast({
+          state: 'STEP_DONE',
+          step,
+          tool: toolName,
+          args: toolArgs,
+          observations,
+          confidence,
+          latencyMs: elapsedMs,
+          depth: latestDepth,
+          holding: latestHolding,
+          actionResult
+        });
+
+        // Fresh look frame if moved or turned
+        if (toolName === 'move' || toolName === 'turn') {
+          const freshLook = await callEngine('look');
+          base64Img = freshLook.jpegBase64 || freshLook;
+          if (typeof base64Img === 'string' && base64Img.startsWith('data:image')) {
+            base64Img = base64Img.split(',')[1];
+          }
+        }
+
+        const toolReplyPayload = {
+          result: actionResult,
+          current_laser_depth: latestDepth,
+          holding_object: latestHolding
+        };
+        if (toolName === 'pickup' && !actionResult.ok) {
+          toolReplyPayload.hint = `Pickup failed. Current laser depth is ${latestDepth}m. You must be <= 0.55m from the target object to grasp it. Drive closer first.`;
+        }
+
+        messages.push({
+          role: "tool",
+          tool_call_id: callId,
+          name: toolName,
+          content: JSON.stringify(toolReplyPayload)
+        });
+
+        if (toolName === 'move' || toolName === 'turn') {
+          messages.push({
+            role: "user",
+            content: [
+              { type: "text", text: `Onboard camera view after ${toolName}: (Center depth: ${latestDepth !== null ? latestDepth.toFixed(2) + 'm' : 'null'}, holding: ${latestHolding})` },
+              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Img}`, detail: "low" } }
+            ]
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[Antigravity Agent Fatal Error]:', err);
+      broadcast({ state: 'ERROR', error: err.message });
+    } finally {
+      isAntigravityRunning = false;
+    }
+  })();
+});
+
 // ==================== POLLINATIONS AI AGENT RUNNER ====================
 let isPollinationsRunning = false;
 let abortPollinations = false;

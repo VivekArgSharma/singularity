@@ -62,7 +62,7 @@ export class ViewsManager {
   renderPovJpeg() {
     this.placePovCamera();
     this.povRenderer.render(this.scene, this.povCamera);
-    return this.povCanvas.toDataURL('image/jpeg', 0.90);
+    return this.povCanvas.toDataURL('image/jpeg', 0.80);
   }
 
   updateDisplayCamera() {

@@ -66,9 +66,10 @@ async function init() {
       try {
         const msg = JSON.parse(event.data);
 
-        // Handle Ollama & Pollinations autonomous agent live broadcast updates
-        if (msg.type === 'ollama_update' || msg.type === 'pollinations_update') {
-          handleAgentUpdate(msg, msg.type === 'pollinations_update' ? 'Pollinations' : 'Ollama');
+        // Handle Antigravity, Ollama & Pollinations autonomous agent live broadcast updates
+        if (msg.type === 'antigravity_update' || msg.type === 'ollama_update' || msg.type === 'pollinations_update') {
+          const agentName = msg.type === 'antigravity_update' ? 'Antigravity' : (msg.type === 'pollinations_update' ? 'Pollinations' : 'Ollama');
+          handleAgentUpdate(msg, agentName);
           return;
         }
 
@@ -376,6 +377,7 @@ async function init() {
   document.querySelectorAll('.preset-chip').forEach(btn => {
     btn.addEventListener('click', () => {
       const cmd = btn.getAttribute('data-cmd');
+      if (agCommandInput) agCommandInput.value = cmd;
       if (pollCommandInput) pollCommandInput.value = cmd;
       if (ollamaInput) ollamaInput.value = cmd;
       const cmdInput = document.getElementById('inputCommand');
@@ -385,23 +387,144 @@ async function init() {
   });
 
   // ==================== AI TABS SWITCHER ====================
+  const tabAg = document.getElementById('tabBtnAg');
+  const tabManual = document.getElementById('tabBtnManual');
   const tabPoll = document.getElementById('tabBtnPoll');
   const tabOllama = document.getElementById('tabBtnOllama');
-  const tabManual = document.getElementById('tabBtnManual');
+  const panelAg = document.getElementById('tabContentAg');
+  const panelManual = document.getElementById('tabContentManual');
   const panelPoll = document.getElementById('tabContentPoll');
   const panelOllama = document.getElementById('tabContentOllama');
-  const panelManual = document.getElementById('tabContentManual');
 
   function switchAiTab(activeBtn, activePanel) {
-    [tabPoll, tabOllama, tabManual].forEach(b => b?.classList.remove('active'));
-    [panelPoll, panelOllama, panelManual].forEach(p => { if (p) p.style.display = 'none'; });
-    activeBtn?.classList.add('active');
+    [tabAg, tabManual, tabPoll, tabOllama].forEach(b => {
+      if (b) {
+        b.classList.remove('active');
+        b.style.borderBottom = 'none';
+        b.style.color = '#94a3b8';
+      }
+    });
+    [panelAg, panelManual, panelPoll, panelOllama].forEach(p => { if (p) p.style.display = 'none'; });
+    if (activeBtn) {
+      activeBtn.classList.add('active');
+      activeBtn.style.borderBottom = activeBtn === tabAg ? '2px solid #38bdf8' : '2px solid #f472b6';
+      activeBtn.style.color = activeBtn === tabAg ? '#38bdf8' : '#fff';
+    }
     if (activePanel) activePanel.style.display = 'block';
   }
 
+  tabAg?.addEventListener('click', () => switchAiTab(tabAg, panelAg));
+  tabManual?.addEventListener('click', () => switchAiTab(tabManual, panelManual));
   tabPoll?.addEventListener('click', () => switchAiTab(tabPoll, panelPoll));
   tabOllama?.addEventListener('click', () => switchAiTab(tabOllama, panelOllama));
-  tabManual?.addEventListener('click', () => switchAiTab(tabManual, panelManual));
+
+  // ==================== ANTIGRAVITY CONTROLLER UI LOGIC ====================
+  const agModelSelect = document.getElementById('agModelSelect');
+  const agCommandInput = document.getElementById('agCommandInput');
+  const btnAgStart = document.getElementById('btnAgStart');
+  const btnAgStop = document.getElementById('btnAgStop');
+  const agStatusText = document.getElementById('agStatusText');
+
+  // Verify proxy connectivity on load
+  async function checkAntigravityStatus() {
+    try {
+      const res = await fetch('/api/antigravity/status');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.connected) {
+          if (agStatusText) {
+            agStatusText.textContent = `🟢 Easy CLI Proxy Connected (${data.models.length} models)`;
+            agStatusText.style.color = '#34d399';
+          }
+          if (agModelSelect && data.models && data.models.length > 0) {
+            // Keep default selected if exists, otherwise populate
+            const existingVals = Array.from(agModelSelect.options).map(o => o.value);
+            data.models.forEach(m => {
+              if (!existingVals.includes(m.id)) {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = `${m.id} (${m.owned_by || 'proxy'})`;
+                agModelSelect.appendChild(opt);
+              }
+            });
+          }
+        } else {
+          if (agStatusText) {
+            agStatusText.textContent = '🟡 Proxy offline at 127.0.0.1:8317';
+            agStatusText.style.color = '#fbbf24';
+          }
+        }
+      }
+    } catch (e) {
+      if (agStatusText) {
+        agStatusText.textContent = '🔴 Proxy connection error';
+        agStatusText.style.color = '#f87171';
+      }
+    }
+  }
+  checkAntigravityStatus();
+
+  async function startAntigravityRun() {
+    const cmd = (agCommandInput ? agCommandInput.value : '').trim();
+    if (!cmd) return;
+
+    const model = agModelSelect ? agModelSelect.value : 'claude-sonnet-4-6';
+
+    btnAgStart.style.display = 'none';
+    btnAgStop.style.display = 'inline-block';
+    agStatusText.textContent = `Running with ${model}...`;
+    agStatusText.style.color = '#38bdf8';
+    ollamaThoughtBox.style.display = 'block';
+
+    addLog(`<b>[Antigravity]</b> Starting frontier vision run with <b>${model}</b> for: "${cmd}"`);
+
+    try {
+      const resp = await fetch('/api/antigravity/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          command: cmd,
+          model: model,
+          proxyUrl: 'http://127.0.0.1:8317/v1',
+          apiKey: '12345'
+        })
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        alert('Could not start Antigravity run: ' + (err.error || resp.statusText));
+        btnAgStart.style.display = 'inline-block';
+        btnAgStop.style.display = 'none';
+        agStatusText.textContent = 'Failed to start';
+        agStatusText.style.color = '#f87171';
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Error communicating with simulation server: ' + e.message);
+      btnAgStart.style.display = 'inline-block';
+      btnAgStop.style.display = 'none';
+    }
+  }
+
+  btnAgStart?.addEventListener('click', startAntigravityRun);
+  btnAgStop?.addEventListener('click', async () => {
+    btnAgStop.disabled = true;
+    agStatusText.textContent = 'Stopping...';
+    await fetch('/api/antigravity/stop', { method: 'POST' });
+    btnAgStart.style.display = 'inline-block';
+    btnAgStop.style.display = 'none';
+    btnAgStop.disabled = false;
+    agStatusText.textContent = 'Stopped';
+    agStatusText.style.color = '#94a3b8';
+    addLog(`<b>[Antigravity]</b> Stopped by user.`);
+  });
+
+  agCommandInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      startAntigravityRun();
+    }
+  });
 
   // ==================== POLLINATIONS CONTROLLER UI LOGIC ====================
   const pollApiKeyInput = document.getElementById('pollApiKey');
