@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Membrane Robot Mission Control</title>
+  <title>Membrane Autonomous Simulation & AI Control Deck</title>
   <link rel="stylesheet" href="style.css">
   <script type="importmap">
     {
@@ -14,15 +14,42 @@
   </script>
 </head>
 <body>
-  <!-- Header -->
+  <!-- Header with Live Telemetry Ribbon -->
   <header class="top-header">
     <div class="brand-container">
-      <div class="brand-icon">🤖</div>
+      <div class="brand-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+      </div>
       <div>
-        <div class="brand-title">MEMBRANE ROBOT MISSION CONTROL</div>
-        <div class="brand-subtitle">Autonomous Vision-Based Fetch Engine (Zero-Leak Sandbox)</div>
+        <div class="brand-title">MEMBRANE AUTONOMY STUDIO</div>
+        <div class="brand-subtitle">Physical 3D Simulation &bull; Zero-Leak Perception Contract</div>
       </div>
     </div>
+
+    <!-- Live Telemetry Ribbon -->
+    <div class="telemetry-ribbon">
+      <div class="ribbon-metric">
+        <span class="ribbon-label">SIM ENGINE</span>
+        <span class="ribbon-value text-cyan" id="ribbonEngine">60.0 FPS</span>
+      </div>
+      <div class="ribbon-metric">
+        <span class="ribbon-label">HEADING</span>
+        <span class="ribbon-value" id="ribbonHeading">0.0°</span>
+      </div>
+      <div class="ribbon-metric">
+        <span class="ribbon-label">LASER DEPTH</span>
+        <span class="ribbon-value text-emerald" id="ribbonDepth">--</span>
+      </div>
+      <div class="ribbon-metric">
+        <span class="ribbon-label">GRIPPER</span>
+        <span class="ribbon-value" id="ribbonHolding">EMPTY</span>
+      </div>
+      <div class="ribbon-metric">
+        <span class="ribbon-label">HITS</span>
+        <span class="ribbon-value text-rose" id="ribbonCollisions">0</span>
+      </div>
+    </div>
+
     <div class="header-status">
       <div id="wsStatus" class="pill-offline">
         <span class="pulse-dot"></span> CONNECTING...
@@ -30,87 +57,253 @@
     </div>
   </header>
 
+  <!-- Quick Mission Presets -->
+  <div class="preset-bar">
+    <span class="preset-label">⚡ QUICK MISSIONS:</span>
+    <button class="preset-chip" data-cmd="Bring the round red thing">
+      <span class="chip-dot" style="background:#f43f5e;"></span> Bring the round red thing
+    </button>
+    <button class="preset-chip" data-cmd="Bring something to drink">
+      <span class="chip-dot" style="background:#eab308;"></span> Bring something to drink
+    </button>
+    <button class="preset-chip" data-cmd="Bring the blue cube">
+      <span class="chip-dot" style="background:#3b82f6;"></span> Bring the blue cube
+    </button>
+    <button class="preset-chip" data-cmd="Bring the tallest object">
+      <span class="chip-dot" style="background:#f59e0b;"></span> Bring the tallest object
+    </button>
+  </div>
+
   <!-- Main Grid -->
   <main class="dashboard-grid">
-    <!-- Left Column: Primary 3D Viewport & Controls -->
+    <!-- Left Column: Primary 3D Viewport & AI Control Center -->
     <section class="viewport-section">
+      <!-- 3D Render Viewport with HUD -->
       <div class="viewport-card">
         <div class="viewport-header">
-          <span style="font-weight: 700; font-size: 13px; color: #38bdf8;">RENDER VIEWPORT</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="viewport-badge">3D RENDER ENGINE</span>
+            <span id="camModeTitle" style="font-size: 11px; color: #94a3b8; font-family: monospace;">CAMERA: ROBOT POV (90° FOV)</span>
+          </div>
           <div class="view-controls">
-            <button id="btnPov" class="view-btn active" title="Robot POV (Claude's Vision)">[1] POV 90°</button>
+            <button id="btnPov" class="view-btn active" title="Robot POV">[1] POV 90°</button>
             <button id="btnFollow" class="view-btn" title="Third-Person Follow">[2] Follow</button>
             <button id="btnOrbit" class="view-btn" title="Overhead Room View">[3] Room Orbit</button>
           </div>
         </div>
+
         <div class="canvas-container">
           <canvas id="displayCanvas" width="960" height="720"></canvas>
+
+          <!-- Cyberpunk Tactical HUD Overlay (Only active in POV) -->
+          <div id="povHudOverlay" class="pov-hud-overlay">
+            <!-- Compass Tape -->
+            <div class="hud-compass-bar">
+              <span id="hudCompassDeg">350° N</span>
+            </div>
+
+            <!-- Central Targeting Reticle -->
+            <div class="hud-reticle">
+              <div class="reticle-cross"></div>
+              <div class="reticle-box"></div>
+              <div class="reticle-range">
+                <span id="hudReticleDist">DEPTH: --</span>
+              </div>
+            </div>
+
+            <!-- Bottom Camera Specs -->
+            <div class="hud-bottom-telemetry">
+              <span>FOV: 90° &bull; 640x480 &bull; PITCH: -10°</span>
+              <span id="hudStatusTag">STATUS: SEARCHING</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Command & Interaction Bar -->
-      <div class="command-card">
-        <div class="command-row">
-          <input type="text" id="inputCommand" class="command-input" placeholder="Enter fetch command, e.g. 'Bring the round red thing' or 'Bring something to drink'..." value="Bring the round red thing">
-          <button id="btnSetCmd" class="action-btn">Set & Record</button>
-          <button id="btnReset" class="action-btn btn-reset">Reset</button>
+      <!-- AI Control Center with Mode Tabs -->
+      <div class="ai-tabs-container">
+        <div class="ai-tab-buttons">
+          <button id="tabBtnPoll" class="ai-tab active">
+            🌸 Pollinations AI (Frontier Vision)
+          </button>
+          <button id="tabBtnOllama" class="ai-tab">
+            🦙 Local Ollama (GPU Offline)
+          </button>
+          <button id="tabBtnManual" class="ai-tab">
+            🎮 Manual Teleop Controls
+          </button>
         </div>
-        <div class="command-row" style="align-items: center; justify-content: space-between;">
-          <div style="font-size: 12px; color: #94a3b8;">
-            <b>Manual Judge Override:</b>
+
+        <!-- Tab 1: Pollinations AI -->
+        <div id="tabContentPoll" class="ai-tab-panel active">
+          <div class="ollama-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="poll-badge">🌸 POLLINATIONS MULTIMODAL VLM</span>
+              <span id="pollStatusText" style="font-size: 12px; color: #94a3b8;">Enter key to run</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <label style="font-size: 11px; color: #94a3b8;">Model:</label>
+              <select id="pollModelSelect" class="ollama-select" style="border-color: rgba(236, 72, 153, 0.4);">
+                <option value="openai/gpt-4o-mini" selected>openai/gpt-4o-mini (Reliable Spatial Vision)</option>
+                <option value="anthropic/claude-haiku-5.5">anthropic/claude-haiku-5.5 (Claude Vision & Reasoning)</option>
+                <option value="google/gemini-2.5-flash-lite">google/gemini-2.5-flash-lite (Ultra Fast)</option>
+                <option value="openai/gpt-5.4-nano">openai/gpt-5.4-nano (Lightweight)</option>
+                <option value="openai/gpt-6.1-terra">openai/gpt-6.1-terra (Frontier Reasoning)</option>
+              </select>
+            </div>
           </div>
-          <div style="display: flex; gap: 8px;">
-            <button id="btnJudgePass" class="action-btn btn-pass" title="Mark run as PASS (Key: Y)">[Y] PASS</button>
-            <button id="btnJudgeFail" class="action-btn btn-fail" title="Mark run as FAIL (Key: N)">[N] FAIL</button>
+          <div class="command-row" style="margin-bottom: 8px;">
+            <input type="password" id="pollApiKey" class="command-input" placeholder="Paste your Pollinations API Key here (sk_...)" style="border-color: rgba(236, 72, 153, 0.4);">
+          </div>
+          <div class="command-row">
+            <input type="text" id="pollCommandInput" class="command-input" placeholder="Enter fetch instruction, e.g. 'Bring the round red thing'..." value="Bring the round red thing" style="border-color: rgba(236, 72, 153, 0.4);">
+            <button id="btnPollStart" class="action-btn btn-poll">🌸 Run Agent [Enter]</button>
+            <button id="btnPollStop" class="action-btn btn-fail" style="display: none;">⏹ Stop</button>
+          </div>
+        </div>
+
+        <!-- Tab 2: Local Ollama AI -->
+        <div id="tabContentOllama" class="ai-tab-panel" style="display: none;">
+          <div class="ollama-header">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="ollama-badge">🦙 LOCAL OLLAMA AGENT</span>
+              <span id="ollamaStatusText" style="font-size: 12px; color: #94a3b8;">Select model & press Enter to start</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <label style="font-size: 11px; color: #94a3b8;">Model:</label>
+              <select id="ollamaModelSelect" class="ollama-select">
+                <option value="moondream">moondream (Vision, 829MB)</option>
+                <option value="dolphin3:latest">dolphin3:latest (Local, 4.9GB)</option>
+                <option value="qwen2.5:7b">qwen2.5:7b (Local, 4.7GB)</option>
+              </select>
+            </div>
+          </div>
+          <div class="command-row">
+            <input type="text" id="ollamaCommandInput" class="command-input ollama-input" placeholder="Type instruction for Ollama and press Enter... (e.g. 'Bring the round red thing')" value="Bring the round red thing">
+            <button id="btnOllamaStart" class="action-btn btn-ollama">⚡ Start Autonomous Run [Enter]</button>
+            <button id="btnOllamaStop" class="action-btn btn-fail" style="display: none;">⏹ Stop</button>
+          </div>
+        </div>
+
+        <!-- Tab 3: Manual Teleop Controls -->
+        <div id="tabContentManual" class="ai-tab-panel" style="display: none;">
+          <div class="command-row">
+            <input type="text" id="inputCommand" class="command-input" placeholder="Command to evaluate against..." value="Bring the round red thing">
+            <button id="btnSetCmd" class="action-btn">Set & Record</button>
+            <button id="btnReset" class="action-btn btn-reset">Reset</button>
+          </div>
+          <div class="command-row" style="align-items: center; justify-content: space-between; margin-top: 8px;">
+            <div style="font-size: 12px; color: #94a3b8;">
+              <b>Manual Judge Verdict:</b>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btnJudgePass" class="action-btn btn-pass" title="Mark run as PASS (Key: Y)">[Y] PASS</button>
+              <button id="btnJudgeFail" class="action-btn btn-fail" title="Mark run as FAIL (Key: N)">[N] FAIL</button>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Local Ollama Autonomous AI Controller -->
-      <div class="command-card ollama-card">
-        <div class="ollama-header">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="ollama-badge">🦙 LOCAL OLLAMA AGENT</span>
-            <span id="ollamaStatusText" style="font-size: 12px; color: #94a3b8;">Select model & press Enter to start</span>
-          </div>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <label style="font-size: 11px; color: #94a3b8;">Model:</label>
-            <select id="ollamaModelSelect" class="ollama-select">
-              <option value="moondream">moondream (Vision, 829MB)</option>
-              <option value="dolphin3:latest">dolphin3:latest (Local, 4.9GB)</option>
-              <option value="qwen2.5:7b">qwen2.5:7b (Local, 4.7GB)</option>
-            </select>
-          </div>
+      <!-- Live AI Thought & Step Inspector -->
+      <div id="ollamaThoughtBox" class="ollama-thought-box" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span id="ollamaStepBadge" class="badge state-locate">STEP 1</span>
+          <span id="ollamaConfBadge" style="font-size: 11px; color: #38bdf8; font-family: monospace;">Confidence: --</span>
         </div>
-        <div class="command-row">
-          <input type="text" id="ollamaCommandInput" class="command-input ollama-input" placeholder="Type instruction for Ollama and press Enter... (e.g. 'Bring the round red thing')" value="Bring the round red thing">
-          <button id="btnOllamaStart" class="action-btn btn-ollama">⚡ Start Autonomous Run [Enter]</button>
-          <button id="btnOllamaStop" class="action-btn btn-fail" style="display: none;">⏹ Stop</button>
-        </div>
-        <!-- Live Ollama Thought Console -->
-        <div id="ollamaThoughtBox" class="ollama-thought-box" style="display: none;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span id="ollamaStepBadge" class="badge state-locate">STEP 1</span>
-            <span id="ollamaConfBadge" style="font-size: 11px; color: #38bdf8; font-family: monospace;">Confidence: --</span>
-          </div>
-          <div id="ollamaObservations" style="font-size: 12px; color: #cbd5e1; margin-bottom: 4px;">Vision: Analyzing camera...</div>
-          <div id="ollamaActionPlanned" style="font-size: 12px; color: #34d399; font-weight: 600;">Action: --</div>
-        </div>
+        <div id="ollamaObservations" style="font-size: 12px; color: #cbd5e1; margin-bottom: 4px;">Vision: Analyzing camera view...</div>
+        <div id="ollamaActionPlanned" style="font-size: 12px; color: #34d399; font-weight: 600;">Action: --</div>
+      </div>
 
-        <!-- Vision Model Raw Debug Output Inspector -->
-        <div class="ollama-debug-panel">
-          <div class="debug-header">
-            <span style="font-size: 11px; font-weight: 700; color: #c084fc;">🔍 VISION MODEL RAW OUTPUT (DEBUG STREAM)</span>
-            <span id="debugLatency" style="font-size: 10px; color: #94a3b8; font-family: monospace;">Latency: --</span>
-          </div>
-          <div id="ollamaRawStream" class="debug-stream">
-            <div style="color: #64748b; font-style: italic;">Raw text output from Moondream/Ollama will stream here for every frame...</div>
-          </div>
+      <!-- Vision Model Raw Debug Output Inspector -->
+      <div class="ollama-debug-panel">
+        <div class="debug-header">
+          <span style="font-size: 11px; font-weight: 700; color: #c084fc;">🔍 VISION MODEL LIVE STREAM & REASONING</span>
+          <span id="debugLatency" style="font-size: 10px; color: #94a3b8; font-family: monospace;">Latency: --</span>
+        </div>
+        <div id="ollamaRawStream" class="debug-stream">
+          <div style="color: #64748b; font-style: italic;">Visual perception output will stream here for every step...</div>
         </div>
       </div>
     </section>
 
     <!-- Right Column: Radar, Telemetry & Logs -->
+    <aside class="sidebar-section">
+      <!-- 2D Cyber Radar Top-Down -->
+      <div class="telemetry-card">
+        <div class="telemetry-header">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="radar-dot"></span>
+            <span>TOP-DOWN TACTICAL RADAR</span>
+          </div>
+          <button id="btnLabels" class="view-btn" style="padding: 2px 8px; font-size: 11px;">Labels [L]</button>
+        </div>
+        <div class="radar-container">
+          <canvas id="topDownCanvas" width="380" height="380"></canvas>
+        </div>
+      </div>
+
+      <!-- Telemetry Readings -->
+      <div class="telemetry-card">
+        <div class="telemetry-header">
+          <span>ROBOT TELEMETRY</span>
+        </div>
+        <div class="telemetry-body">
+          <div class="telemetry-row">
+            <span class="telemetry-label">State Machine:</span>
+            <span id="hudState" class="badge state-idle">IDLE</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-label">Pose (X, Y, Heading):</span>
+            <span id="hudPose" class="telemetry-value">X: -2.40m Y: 0.00m H: 0.0°</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-label">Gripper Status:</span>
+            <span id="hudHolding" class="telemetry-value">NO (Empty)</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-label">Collision Retries:</span>
+            <span id="hudRetries" class="telemetry-value" style="color: #fb7185;">0 / 3</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-label">Steps / Collisions:</span>
+            <span class="telemetry-value"><span id="hudSteps">0</span> steps | <span id="hudCollisions" style="color: #fb7185;">0</span> hits</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-label">Path Length / Sim Time:</span>
+            <span class="telemetry-value"><span id="hudPath">0.00 m</span> | <span id="hudSimSec">0.0 s</span></span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-label">Last Tool Action:</span>
+            <span id="hudLastAction" class="telemetry-value" style="color: #38bdf8;">None</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telemetry Event Log -->
+      <div class="telemetry-card" style="flex: 1;">
+        <div class="telemetry-header">
+          <span>EVENT & AUDIT LOG</span>
+        </div>
+        <div style="padding: 10px;">
+          <div id="eventLog" class="log-terminal"></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Footer Shortcuts -->
+  <footer class="footer-bar">
+    <div>
+      Manual Driving: <span class="kbd">↑ / ↓</span> Move &nbsp;|&nbsp; <span class="kbd">← / →</span> Turn &nbsp;|&nbsp; <span class="kbd">Space</span> Pick/Drop &nbsp;|&nbsp; <span class="kbd">1</span> POV &nbsp;|&nbsp; <span class="kbd">2</span> Follow &nbsp;|&nbsp; <span class="kbd">3</span> Orbit &nbsp;|&nbsp; <span class="kbd">L</span> Labels
+    </div>
+    <div>
+      Hackathon Standard: Zero-Leak Contract &bull; Fixed 60Hz Sim &bull; Claude 3.5 Agent
+    </div>
+  </footer>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
     <aside class="sidebar-section">
       <!-- 2D Cyber Radar Top-Down -->
       <div class="telemetry-card">

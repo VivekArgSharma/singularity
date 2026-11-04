@@ -1,0 +1,83 @@
+{
+  "$schema": "https://pen.dev/schema/v1.json",
+  "version": "1.0",
+  "name": "Membrane Autonomy Studio Design System",
+  "theme": "dark",
+  "tokens": {
+    "colors": {
+      "bg.canvas": "#090d16",
+      "bg.surface": "#0f172a",
+      "bg.card": "#1e293b",
+      "bg.card.hover": "#26334d",
+      "border.subtle": "rgba(56, 189, 248, 0.15)",
+      "border.highlight": "#0ea5e9",
+      "text.primary": "#f8fafc",
+      "text.muted": "#94a3b8",
+      "accent.cyan": "#06b6d4",
+      "accent.emerald": "#10b981",
+      "accent.rose": "#f43f5e",
+      "accent.pink": "#ec4899",
+      "accent.amber": "#f59e0b"
+    },
+    "radii": {
+      "sm": "6px",
+      "md": "8px",
+      "lg": "12px",
+      "full": "9999px"
+    },
+    "typography": {
+      "font.ui": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      "font.mono": "'JetBrains Mono', 'Fira Code', Menlo, monospace"
+    }
+  },
+  "components": [
+    {
+      "id": "telemetry-ribbon",
+      "name": "Live Telemetry Ribbon",
+      "type": "flex",
+      "direction": "horizontal",
+      "gap": 16,
+      "padding": [6, 16],
+      "background": "rgba(15, 23, 42, 0.65)",
+      "borderRadius": "9999px",
+      "border": "1px solid rgba(56, 189, 248, 0.2)",
+      "children": ["sim-engine-fps", "heading-metric", "laser-depth-metric", "gripper-metric", "collisions-metric"]
+    },
+    {
+      "id": "quick-preset-bar",
+      "name": "Mission Presets Bar",
+      "type": "flex",
+      "direction": "horizontal",
+      "gap": 10,
+      "padding": [8, 24],
+      "children": [
+        {"name": "round-red-thing", "label": "🔴 Bring the round red thing", "color": "#f43f5e"},
+        {"name": "something-to-drink", "label": "🥤 Bring something to drink", "color": "#eab308"},
+        {"name": "blue-cube", "label": "🟦 Bring the blue cube", "color": "#3b82f6"},
+        {"name": "tallest-object", "label": "📐 Bring the tallest object", "color": "#f59e0b"}
+      ]
+    },
+    {
+      "id": "pov-tactical-hud",
+      "name": "Cyberpunk Tactical Reticle & Compass",
+      "type": "overlay",
+      "elements": [
+        {"type": "compass-tape", "position": "top-center", "font": "mono"},
+        {"type": "reticle-crosshair", "position": "center", "size": [140, 140], "color": "#06b6d4"},
+        {"type": "rangefinder-badge", "position": "below-reticle", "unit": "meters"},
+        {"type": "telemetry-strip", "position": "bottom-docked"}
+      ]
+    },
+    {
+      "id": "ai-tab-deck",
+      "name": "Tabbed AI Control Center",
+      "type": "tabs",
+      "tabs": [
+        {"id": "tab-poll", "title": "🌸 Pollinations AI (Frontier Vision)", "accent": "#ec4899"},
+        {"id": "tab-ollama", "title": "🦙 Local Ollama (GPU Offline)", "accent": "#06b6d4"},
+        {"id": "tab-manual", "title": "🎮 Manual Teleop Controls", "accent": "#10b981"}
+      ]
+    }
+  ]
+}
+

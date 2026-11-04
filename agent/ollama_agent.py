@@ -41,6 +41,9 @@ def run_ollama_episode(command: str, model: str = DEFAULT_MODEL, max_steps: int 
     frame = engine.look()
     logger.save_frame(0, frame)
 
+    consecutive_turns = 0
+    last_collided = False
+
     for step in range(1, max_steps + 1):
         # Read current sensor readings
         state = engine.state()
@@ -123,6 +126,10 @@ Explicitly state:
                 else:
                     parsed = {"observations": [raw_text.strip() or 'Searching green zone'], "target": "green zone", "confidence": 0.5, "tool": "turn", "args": {"degrees": 50}}
 
+        if last_collided:
+            parsed = {"observations": ["Obstacle avoidance detour"], "target": command, "confidence": 0.7, "tool": "turn", "args": {"degrees": 45}}
+            last_collided = False
+
         tool_name = parsed.get('tool', 'turn')
         tool_args = parsed.get('args', {})
         target = parsed.get('target', command)[:20]
@@ -137,6 +144,8 @@ Explicitly state:
 
         action_fn = ACTIONS.get(tool_name, ACTIONS['turn'])
         action_res = action_fn(engine, tool_args)
+        if tool_name == 'move':
+            last_collided = action_res.get('collided', False)
 
         frame_path = None
         if tool_name in LOOK_AFTER:

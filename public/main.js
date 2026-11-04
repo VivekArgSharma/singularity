@@ -66,9 +66,9 @@ async function init() {
       try {
         const msg = JSON.parse(event.data);
 
-        // Handle Ollama autonomous agent live broadcast updates
-        if (msg.type === 'ollama_update') {
-          handleOllamaUpdate(msg);
+        // Handle Ollama & Pollinations autonomous agent live broadcast updates
+        if (msg.type === 'ollama_update' || msg.type === 'pollinations_update') {
+          handleAgentUpdate(msg, msg.type === 'pollinations_update' ? 'Pollinations' : 'Ollama');
           return;
         }
 
@@ -372,55 +372,193 @@ async function init() {
     }
   });
 
+  // ==================== QUICK PRESET CHIPS ====================
+  document.querySelectorAll('.preset-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cmd = btn.getAttribute('data-cmd');
+      if (pollCommandInput) pollCommandInput.value = cmd;
+      if (ollamaInput) ollamaInput.value = cmd;
+      const cmdInput = document.getElementById('inputCommand');
+      if (cmdInput) cmdInput.value = cmd;
+      addLog(`Selected preset mission: "<b>${cmd}</b>"`);
+    });
+  });
+
+  // ==================== AI TABS SWITCHER ====================
+  const tabPoll = document.getElementById('tabBtnPoll');
+  const tabOllama = document.getElementById('tabBtnOllama');
+  const tabManual = document.getElementById('tabBtnManual');
+  const panelPoll = document.getElementById('tabContentPoll');
+  const panelOllama = document.getElementById('tabContentOllama');
+  const panelManual = document.getElementById('tabContentManual');
+
+  function switchAiTab(activeBtn, activePanel) {
+    [tabPoll, tabOllama, tabManual].forEach(b => b?.classList.remove('active'));
+    [panelPoll, panelOllama, panelManual].forEach(p => { if (p) p.style.display = 'none'; });
+    activeBtn?.classList.add('active');
+    if (activePanel) activePanel.style.display = 'block';
+  }
+
+  tabPoll?.addEventListener('click', () => switchAiTab(tabPoll, panelPoll));
+  tabOllama?.addEventListener('click', () => switchAiTab(tabOllama, panelOllama));
+  tabManual?.addEventListener('click', () => switchAiTab(tabManual, panelManual));
+
+  // ==================== POLLINATIONS CONTROLLER UI LOGIC ====================
+  const pollApiKeyInput = document.getElementById('pollApiKey');
+  const pollModelSelect = document.getElementById('pollModelSelect');
+  const pollCommandInput = document.getElementById('pollCommandInput');
+  const btnPollStart = document.getElementById('btnPollStart');
+  const btnPollStop = document.getElementById('btnPollStop');
+  const pollStatusText = document.getElementById('pollStatusText');
+
+  let envKeyAvailable = false;
+
+  // Check if API key is configured in .env on server
+  fetch('/api/pollinations/status')
+    .then(r => r.json())
+    .then(data => {
+      if (data.hasEnvKey) {
+        envKeyAvailable = true;
+        if (!pollApiKeyInput.value) {
+          pollApiKeyInput.placeholder = '✓ API Key loaded from .env (or override here)';
+          pollStatusText.textContent = 'API Key active from .env';
+          pollStatusText.style.color = '#34d399';
+        }
+      }
+    })
+    .catch(() => {});
+
+  // Load saved Pollinations key from localStorage if available
+  if (pollApiKeyInput) {
+    const savedKey = localStorage.getItem('pollinations_api_key');
+    if (savedKey) pollApiKeyInput.value = savedKey;
+    pollApiKeyInput.addEventListener('input', () => {
+      localStorage.setItem('pollinations_api_key', pollApiKeyInput.value.trim());
+    });
+  }
+
+  async function startPollinationsRun() {
+    const key = (pollApiKeyInput ? pollApiKeyInput.value : '').trim();
+    if (!key && !envKeyAvailable) {
+      alert('Please enter your Pollinations API key (sk_...) or set it in .env');
+      pollApiKeyInput?.focus();
+      return;
+    }
+
+    const cmd = (pollCommandInput ? pollCommandInput.value : '').trim();
+    const model = pollModelSelect ? pollModelSelect.value : 'openai/gpt-4o';
+
+    btnPollStart.style.display = 'none';
+    btnPollStop.style.display = 'inline-block';
+    pollStatusText.textContent = `Running with ${model}...`;
+    pollStatusText.style.color = '#f472b6';
+    ollamaThoughtBox.style.display = 'block';
+
+    addLog(`<b>[Pollinations]</b> Starting run with <b>${model}</b> for: "${cmd}"`);
+
+    try {
+      const resp = await fetch('/api/pollinations/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: cmd, apiKey: key, model })
+      });
+      if (!resp.ok) {
+        const err = await resp.json();
+        addLog(`<span style="color:#f43f5e">[Pollinations Error] ${err.error}</span>`);
+        resetPollUi();
+      }
+    } catch (err) {
+      addLog(`<span style="color:#f43f5e">[Pollinations Network Error] ${err.message}</span>`);
+      resetPollUi();
+    }
+  }
+
+  function resetPollUi() {
+    btnPollStart.style.display = 'inline-block';
+    btnPollStop.style.display = 'none';
+    pollStatusText.textContent = 'Enter API key to unlock full vision';
+    pollStatusText.style.color = '#94a3b8';
+  }
+
+  btnPollStart?.addEventListener('click', startPollinationsRun);
+  btnPollStop?.addEventListener('click', async () => {
+    addLog('[Pollinations] User requested abort');
+    await fetch('/api/pollinations/stop', { method: 'POST' });
+    resetPollUi();
+  });
+
+  pollCommandInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      startPollinationsRun();
+    }
+  });
+
   const ollamaRawStream = document.getElementById('ollamaRawStream');
   const debugLatency = document.getElementById('debugLatency');
 
-  function handleOllamaUpdate(msg) {
+  function handleAgentUpdate(msg, agentName = 'AI') {
     if (msg.state === 'THINKING') {
       ollamaStepBadge.textContent = `STEP ${msg.step}`;
-      ollamaObservations.textContent = `Depth: ${msg.depth !== null ? msg.depth + 'm' : 'null'} | Sending frame to ${ollamaSelect.value}...`;
+      ollamaObservations.textContent = `Depth: ${msg.depth !== null ? msg.depth + 'm' : 'null'} | Analyzing camera frame with ${agentName}...`;
       ollamaActionPlanned.textContent = 'Action: Computing move...';
     } else if (msg.state === 'STEP_DONE') {
       ollamaStepBadge.textContent = `STEP ${msg.step}`;
       if (msg.confidence !== undefined) {
         ollamaConfBadge.textContent = `Confidence: ${(msg.confidence * 100).toFixed(0)}%`;
       }
-      if (msg.observations && msg.observations.length > 0) {
-        ollamaObservations.textContent = `Vision: "${msg.observations.join('; ')}"`;
+      if (msg.observations) {
+        const obsText = Array.isArray(msg.observations) ? msg.observations.join('; ') : String(msg.observations);
+        ollamaObservations.textContent = `Vision: "${obsText}"`;
       }
       ollamaActionPlanned.textContent = `Action: ${msg.tool} ${JSON.stringify(msg.args || {})}`;
-      addLog(`<b>[Ollama Step ${msg.step}]</b>: ${msg.tool}(${JSON.stringify(msg.args || {})})`);
+      addLog(`<b>[${agentName} Step ${msg.step}]</b>: ${msg.tool}(${JSON.stringify(msg.args || {})})`);
 
       if (msg.latencyMs && debugLatency) {
         debugLatency.textContent = `Latency: ${msg.latencyMs}ms`;
       }
 
-      // Stream exact raw vision model text to the debug console
       if (ollamaRawStream && msg.rawOutput) {
         const entry = document.createElement('div');
         entry.className = 'debug-entry';
         entry.innerHTML = `
-          <div><span class="debug-step-tag">[STEP ${msg.step}]</span> <span style="color:#34d399;">Action: ${msg.tool} ${JSON.stringify(msg.args || {})}</span></div>
+          <div><span class="debug-step-tag">[${agentName} STEP ${msg.step}]</span> <span style="color:#34d399;">Action: ${msg.tool} ${JSON.stringify(msg.args || {})}</span></div>
           <div class="debug-raw-text">"${msg.rawOutput}"</div>
         `;
         ollamaRawStream.prepend(entry);
       }
     } else if (msg.state === 'COMPLETED' || msg.state === 'FINISHED') {
       resetOllamaUi();
+      resetPollUi();
       if (msg.result) {
         const isPass = msg.result.outcome === 'pass';
-        addLog(`<b>[Ollama Complete]</b> Outcome: <span style="color:${isPass ? '#34d399' : '#f43f5e'}; font-weight:bold;">${msg.result.outcome}</span>`);
-        ollamaObservations.textContent = `Run finished with outcome: ${msg.result.outcome}`;
+        addLog(`<b>[${agentName} Complete]</b> Outcome: <span style="color:${isPass ? '#34d399' : '#f43f5e'}; font-weight:bold;">${msg.result.outcome}</span>`);
+        ollamaObservations.textContent = `Mission complete with outcome: ${msg.result.outcome}`;
         ollamaActionPlanned.textContent = `Steps: ${msg.result.steps} | Sim Time: ${msg.result.simSeconds}s`;
       }
-    } else if (msg.state === 'ABORTED') {
+    } else if (msg.state === 'ABORTED' || msg.state === 'ERROR') {
       resetOllamaUi();
-      ollamaObservations.textContent = 'Run aborted by user.';
+      resetPollUi();
+      ollamaObservations.textContent = msg.error || 'Run stopped.';
     }
   }
 
   // 5. Continuous Render & HUD Animation Loop
+  let lastTime = performance.now();
+  let frameCount = 0;
+  let fps = 60.0;
+  const ribbonEngine = document.getElementById('ribbonEngine');
+
   function tick() {
+    frameCount++;
+    const now = performance.now();
+    if (now - lastTime >= 1000) {
+      fps = (frameCount * 1000) / (now - lastTime);
+      frameCount = 0;
+      lastTime = now;
+      if (ribbonEngine) ribbonEngine.textContent = `${fps.toFixed(1)} FPS`;
+    }
+
     views.renderDisplay();
     views.drawTopDown();
     views.updateHud();

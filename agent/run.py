@@ -10,7 +10,11 @@ def main():
     parser = argparse.ArgumentParser(description="Membrane Robot Episode Harness")
     parser.add_argument("command", nargs="?", default="Bring the round red thing", help="Command to run")
     parser.add_argument("--model", default=None, help="Claude model name override")
+    parser.add_argument("--api-key", default=None, help="Anthropic API key override")
     args = parser.parse_args()
+
+    if args.api_key:
+        os.environ['ANTHROPIC_API_KEY'] = args.api_key
 
     command = args.command
     print(f"==================================================")

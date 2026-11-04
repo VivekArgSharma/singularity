@@ -2,12 +2,30 @@ import express from 'express';
 import { WebSocketServer } from 'ws';
 import http from 'http';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
+
+// Load .env if present
+const envPath = path.join(rootDir, '.env');
+if (fs.existsSync(envPath)) {
+  const content = fs.readFileSync(envPath, 'utf-8');
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+      const [k, ...v] = trimmed.split('=');
+      const key = k.trim();
+      const val = v.join('=').trim().replace(/^['"]|['"]$/g, '');
+      if (!process.env[key] && val) {
+        process.env[key] = val;
+      }
+    }
+  }
+}
 
 // Express apps
 const agentApp = express();
@@ -229,6 +247,256 @@ adminApp.get('/admin/result', async (req, res) => {
   }
 });
 
+// ==================== POLLINATIONS AI AGENT RUNNER ====================
+let isPollinationsRunning = false;
+let abortPollinations = false;
+
+// GET /api/pollinations/status
+agentApp.get('/api/pollinations/status', (req, res) => {
+  res.json({
+    hasEnvKey: Boolean(process.env.POLLINATIONS_API_KEY),
+    isRunning: isPollinationsRunning
+  });
+});
+
+// POST /api/pollinations/stop
+agentApp.post('/api/pollinations/stop', (req, res) => {
+  abortPollinations = true;
+  isPollinationsRunning = false;
+  res.json({ ok: true, status: 'Stopped' });
+});
+
+// POST /api/pollinations/start
+agentApp.post('/api/pollinations/start', async (req, res) => {
+  if (isPollinationsRunning) {
+    return res.status(409).json({ error: 'A Pollinations run is already active' });
+  }
+
+  const apiKey = req.body.apiKey || process.env.POLLINATIONS_API_KEY;
+  if (!apiKey) {
+    return res.status(400).json({ error: 'Pollinations API key is required' });
+  }
+
+  const command = req.body.command || 'Bring the round red thing';
+  const model = req.body.model || 'openai/gpt-4o-mini';
+
+  isPollinationsRunning = true;
+  abortPollinations = false;
+
+  res.json({ ok: true, status: 'Started', command, model });
+
+  (async () => {
+    try {
+      console.log(`[Pollinations Agent] Starting run with '${model}' for: "${command}"`);
+      await callEngine('setCommand', { text: command });
+
+      const broadcast = (data) => {
+        if (engineSocket && engineSocket.readyState === 1) {
+          engineSocket.send(JSON.stringify({ type: 'pollinations_update', ...data }));
+        }
+      };
+
+      const MAX_STEPS = 25;
+      let frame = await callEngine('look');
+      let base64Img = frame.jpegBase64 || frame;
+      if (typeof base64Img === 'string' && base64Img.startsWith('data:image')) {
+        base64Img = base64Img.split(',')[1];
+      }
+
+      const messages = [
+        {
+          role: 'system',
+          content: `You are the autonomous navigation controller of a mobile robot.
+Your physical specifications:
+- Room size: 6.0m x 6.0m arena. Floor grid lines form 0.5m squares ("blocks"). 
+  Scale: 1 block = 0.5m, 2 blocks = 1.0m, 4 blocks = 2.0m.
+- Forward camera: 90° horizontal field of view (640x480 resolution). 
+  Center pixel is x=320. 1° of rotation spans ~7 pixels horizontally.
+  Clockwise (right) is positive degrees, counter-clockwise (left) is negative degrees.
+- Depth sensor: center laser ray measures distance straight ahead up to 10.0m.
+
+Mission command: "${command}"
+
+Available Actions & Dynamic Parameters:
+1. "turn": {"degrees": <number>}
+   - Turn by ANY exact degree value. E.g. {"degrees": -15} for slight left, {"degrees": 30} for right, {"degrees": 180} for turnaround.
+2. "move": {"distance": <number>}
+   - Drive forward by ANY exact distance in metres. E.g. {"distance": 0.5} (1 block), {"distance": 1.2} (2.4 blocks).
+   - If you hit an obstacle, it safely stops and returns {"moved": ..., "collided": true}.
+3. "read_depth": {}
+   - Measures exact distance in metres to whatever is centered in view.
+4. "pickup": {}
+   - Grasp object directly ahead when distance <= 0.55m.
+5. "drop": {}
+   - Release held object into the green floor zone.
+6. "done": {}
+   - End mission once successfully delivered.
+
+Optimal Strategy:
+- Center the target horizontally in camera view using fine-tuned turns.
+- Check depth! If center depth is > 0.55m (e.g. 1.0m, 2.0m, 3.0m), DO NOT call "pickup"! Drive forward with "move" (e.g. {"distance": 1.0} or {"distance": 1.5}) to approach the target.
+- ONLY call "pickup" once you are right next to the object and center depth is <= 0.55m!
+- Once holding object, rotate to spot the flat green square drop zone, navigate onto it, call "drop", then "done".
+
+CRITICAL: Respond ONLY with a valid JSON object in this exact format:
+{
+  "tool": "turn" | "move" | "read_depth" | "pickup" | "drop" | "done",
+  "args": { "degrees": 25 } or { "distance": 1.0 } or {},
+  "observations": "Brief visual description of what you see in the frame",
+  "target": "Target object or green zone",
+  "confidence": 0.95
+}`
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: `Command: "${command}". What is your next action?` },
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Img}`, detail: 'high' } }
+          ]
+        }
+      ];
+
+      for (let step = 1; step <= MAX_STEPS; step++) {
+        if (abortPollinations) {
+          console.log('[Pollinations Agent] Aborted.');
+          broadcast({ state: 'ABORTED', step });
+          break;
+        }
+
+        const depthData = await callEngine('depth');
+        const stateData = await callEngine('state');
+        const currentDepth = depthData.depth;
+        const isHolding = stateData.holding;
+
+        broadcast({ state: 'THINKING', step, depth: currentDepth, holding: isHolding });
+        const startTime = Date.now();
+
+        // Call Pollinations OpenAI-compatible endpoint
+        const pollResp = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: messages,
+            temperature: 0.1
+          })
+        });
+
+        if (!pollResp.ok) {
+          const errText = await pollResp.text();
+          console.error('[Pollinations Error]:', pollResp.status, errText);
+          broadcast({ state: 'ERROR', error: `HTTP ${pollResp.status}: ${errText}` });
+          break;
+        }
+
+        const pollData = await pollResp.json();
+        const rawContent = pollData.choices?.[0]?.message?.content || '';
+        const elapsedMs = Date.now() - startTime;
+
+        let parsed = null;
+        const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try { parsed = JSON.parse(jsonMatch[0]); } catch (e) {}
+        }
+
+        if (!parsed || !parsed.tool) {
+          parsed = { tool: 'turn', args: { degrees: 45 }, observations: rawContent, confidence: 0.5 };
+        }
+
+        const toolName = parsed.tool;
+        const toolArgs = parsed.args || {};
+
+        console.log(`[Pollinations Step ${step}] ${toolName}`, toolArgs, `(Latency: ${elapsedMs}ms)`);
+
+        let actionResult = null;
+        if (toolName === 'turn') {
+          const deg = toolArgs.degrees !== undefined ? Number(toolArgs.degrees) : (toolArgs.angle !== undefined ? Number(toolArgs.angle) : 45);
+          actionResult = await callEngine('turn', { degrees: isNaN(deg) ? 45 : deg });
+        } else if (toolName === 'move') {
+          const dist = toolArgs.distance !== undefined ? Number(toolArgs.distance) : (toolArgs.amount !== undefined ? Number(toolArgs.amount) : 0.5);
+          actionResult = await callEngine('move', { distance: isNaN(dist) ? 0.5 : dist });
+        } else if (toolName === 'read_depth' || toolName === 'depth') {
+          actionResult = await callEngine('depth');
+        } else if (toolName === 'pickup') {
+          actionResult = await callEngine('pickup');
+        } else if (toolName === 'drop') {
+          actionResult = await callEngine('drop');
+        } else if (toolName === 'done') {
+          actionResult = { ok: true };
+          broadcast({ state: 'COMPLETED', step, tool: 'done', rawOutput: rawContent });
+          break;
+        }
+
+        // Fetch fresh state & depth after action execution
+        const postState = await callEngine('state');
+        const postDepth = await callEngine('depth');
+        const latestDepth = postDepth.depth;
+        const latestHolding = postState.holding;
+
+        // Fetch fresh look frame if moved or turned
+        if (toolName === 'move' || toolName === 'turn') {
+          const freshLook = await callEngine('look');
+          base64Img = freshLook.jpegBase64 || freshLook;
+          if (typeof base64Img === 'string' && base64Img.startsWith('data:image')) {
+            base64Img = base64Img.split(',')[1];
+          }
+        }
+
+        // Construct clear, feedback-rich prompt for vision model
+        let feedbackText = `Action result: ${JSON.stringify(actionResult)}. Current center depth: ${latestDepth !== null ? latestDepth.toFixed(2) + 'm' : 'null (open space)'}, holding: ${latestHolding}.`;
+        if (toolName === 'pickup' && !actionResult.ok) {
+          feedbackText += ` [ATTENTION: Pickup failed! The robot can only grasp objects when center depth <= 0.55m. You are currently ${latestDepth !== null ? latestDepth.toFixed(2) + 'm' : 'too far'} away. You MUST call "move" to drive closer before calling pickup!]`;
+        }
+
+        // Update conversation message
+        messages.push({ role: 'assistant', content: rawContent });
+        messages.push({
+          role: 'user',
+          content: [
+            { type: 'text', text: `${feedbackText} What is your next action JSON?` },
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Img}`, detail: 'high' } }
+          ]
+        });
+
+        // Prune older images to save tokens
+        if (messages.length > 5) {
+          for (let i = 1; i < messages.length - 2; i++) {
+            if (Array.isArray(messages[i].content)) {
+              messages[i].content = messages[i].content.filter(p => p.type !== 'image_url');
+            }
+          }
+        }
+
+        broadcast({
+          state: 'STEP_DONE',
+          step,
+          tool: toolName,
+          args: toolArgs,
+          result: actionResult,
+          rawOutput: rawContent,
+          latencyMs: elapsedMs,
+          thumbnail: base64Img ? `data:image/jpeg;base64,${base64Img}` : null,
+          observations: parsed.observations,
+          confidence: parsed.confidence
+        });
+
+        await new Promise(r => setTimeout(r, 600));
+      }
+
+      const finalResult = await callEngine('getResult');
+      broadcast({ state: 'FINISHED', result: finalResult });
+
+    } catch (err) {
+      console.error('[Pollinations Loop Error]:', err);
+    } finally {
+      isPollinationsRunning = false;
+    }
+  })();
+});
+
 // ==================== OLLAMA LOCAL AGENT RUNNER ====================
 let isOllamaRunning = false;
 let abortOllama = false;
@@ -289,6 +557,7 @@ agentApp.post('/api/ollama/start', async (req, res) => {
 
       const MAX_STEPS = 30;
       let lastCollided = false;
+      let consecutiveTurns = 0;
 
       for (let step = 1; step <= MAX_STEPS; step++) {
         if (abortOllama) {
@@ -310,14 +579,12 @@ agentApp.post('/api/ollama/start', async (req, res) => {
         const isHolding = stateData.holding;
 
         // 2. Build Vision Prompt suited for Lightweight VLMs
-        const promptText = `You are the eyes of a mobile robot.
-User mission: "${command}"
-Currently holding object: ${isHolding ? 'YES (carrying object to green zone)' : 'NO (looking for target)'}
-
-Describe what objects, colors, and shapes you see in this camera view.
-Explicitly state:
-1. Do you see the target object matching "${command}"? If yes, is it on the LEFT, CENTER, or RIGHT of your view?
-2. Do you see the green square drop zone on the floor? If yes, where is it (left, center, right)?`;
+        let promptText = '';
+        if (!isHolding) {
+          promptText = `Describe the position of the object matching "${command}" in this camera view. Is it visible on the left, center, right, or not visible?`;
+        } else {
+          promptText = `Describe the position of the green square drop zone on the floor. Is it visible on the left, center, right, or not visible?`;
+        }
 
         broadcast({
           state: 'THINKING',
@@ -374,7 +641,12 @@ Explicitly state:
               const cmdLower = command.toLowerCase();
               let targetDetected = false;
 
-              // Check if target keywords are described in the scene
+              // Check affirmative replies
+              if (lower.includes('yes') || lower.includes('center') || lower.includes('middle') || lower.includes('ahead')) {
+                targetDetected = true;
+              }
+
+              // Check if target keywords or colors are described in the scene
               if (cmdLower.includes('red') && lower.includes('red')) targetDetected = true;
               else if (cmdLower.includes('blue') && lower.includes('blue')) targetDetected = true;
               else if (cmdLower.includes('yellow') && (lower.includes('yellow') || lower.includes('can') || lower.includes('drink'))) targetDetected = true;
@@ -382,6 +654,11 @@ Explicitly state:
               else if (cmdLower.includes('cone') && lower.includes('cone')) targetDetected = true;
               else if (cmdLower.includes('sphere') && (lower.includes('sphere') || lower.includes('ball') || lower.includes('circle'))) targetDetected = true;
               else if (cmdLower.includes('cube') && (lower.includes('cube') || lower.includes('box'))) targetDetected = true;
+
+              // Explicit negative overrides
+              if (lower.includes('not visible') || lower.includes('none') || lower === 'no') {
+                targetDetected = false;
+              }
 
               if (!isHolding) {
                 if (targetDetected) {
@@ -464,6 +741,19 @@ Explicitly state:
         }
 
         const elapsedMs = Date.now() - startTime;
+
+        // Collision recovery: if last move collided with an obstacle (e.g. orange cone), detour around it
+        if (lastCollided) {
+          console.log('[Ollama Agent] Collision detected! Executing obstacle detour maneuver.');
+          parsed = {
+            observations: ['Obstacle detected ahead, steering to clear line of sight'],
+            target: command,
+            confidence: 0.7,
+            tool: 'turn',
+            args: { degrees: 45 }
+          };
+          lastCollided = false;
+        }
 
         if (!parsed) {
           parsed = {

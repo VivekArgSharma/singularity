@@ -39,6 +39,25 @@ export class Robot {
   createRobotMesh() {
     const group = new THREE.Group();
 
+    // Robot ground contact shadow decal
+    const shadowGeo = new THREE.PlaneGeometry(this.radius * 2.5, this.radius * 2.5);
+    const shadowCanvas = document.createElement('canvas');
+    shadowCanvas.width = 64; shadowCanvas.height = 64;
+    const sctx = shadowCanvas.getContext('2d');
+    const grad = sctx.createRadialGradient(32, 32, 4, 32, 32, 30);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 0.7)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    sctx.fillStyle = grad; sctx.fillRect(0, 0, 64, 64);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      map: new THREE.CanvasTexture(shadowCanvas),
+      transparent: true,
+      depthWrite: false
+    });
+    const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.002;
+    group.add(shadow);
+
     // Sleek cyber body: cylinder with rounded edges
     const bodyGeo = new THREE.CylinderGeometry(this.radius, this.radius, 0.22, 32);
     const bodyMat = new THREE.MeshStandardMaterial({
@@ -105,6 +124,7 @@ export class Robot {
     this.holding.currentPos = [hx, hy];
     this.holding.mesh.position.set(hx, 0.15 + (this.holding.height || this.holding.size) / 2, hy);
     this.holding.mesh.rotation.y = -rad;
+    if (this.holding.shadowDecal) this.holding.shadowDecal.visible = false;
   }
 
   getCameraWorldPose() {
@@ -153,6 +173,10 @@ export class Robot {
       obj.mesh.position.set(obj.pos[0], (obj.height || obj.size) / 2, obj.pos[1]);
       obj.mesh.rotation.set(0, 0, 0);
       obj.mesh.visible = true;
+      if (obj.shadowDecal) {
+        obj.shadowDecal.position.set(obj.pos[0], 0.002, obj.pos[1]);
+        obj.shadowDecal.visible = true;
+      }
     }
 
     this.updateMeshPose();
@@ -235,8 +259,10 @@ export class Robot {
       this.stats.pathLength += curStep;
       this.updateMeshPose();
 
-      // Yield frame slightly for smooth visualization if in browser animation
-      await new Promise(r => setTimeout(r, 8));
+      // Yield frame slightly for smooth visualization only if tab is active in foreground
+      if (typeof document !== 'undefined' && !document.hidden) {
+        await new Promise(r => setTimeout(r, 6));
+      }
     }
 
     this.updateMeshPose();
@@ -289,7 +315,10 @@ export class Robot {
       this.pose.heading = nextHeading;
       turned += curStep;
       this.updateMeshPose();
-      await new Promise(r => setTimeout(r, 8));
+      // Yield frame slightly for smooth visualization only if tab is active in foreground
+      if (typeof document !== 'undefined' && !document.hidden) {
+        await new Promise(r => setTimeout(r, 6));
+      }
     }
 
     this.updateMeshPose();
@@ -360,6 +389,10 @@ export class Robot {
     droppedObj.held = false;
     droppedObj.currentPos = [dropX, dropY];
     droppedObj.mesh.position.set(dropX, (droppedObj.height || droppedObj.size) / 2, dropY);
+    if (droppedObj.shadowDecal) {
+      droppedObj.shadowDecal.position.set(dropX, 0.002, dropY);
+      droppedObj.shadowDecal.visible = true;
+    }
     this.holding = null;
 
     const insideZone = inZone([dropX, dropY], this.world);
@@ -377,6 +410,11 @@ export class Robot {
     const ignoreId = this.holding ? this.holding.id : null;
     const d = rayDepth([camPose.x, camPose.y], this.pose.heading, ignoreId, this.world);
     return { depth: d };
+  }
+
+  getCenterDepth() {
+    const res = this.depth();
+    return res.depth;
   }
 }
 

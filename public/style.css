@@ -104,10 +104,242 @@ body {
   font-weight: 600;
 }
 
-.pulse-dot {
+/* Telemetry Ribbon in Top Header */
+.telemetry-ribbon {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  padding: 6px 16px;
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
+}
+
+.ribbon-metric {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: monospace;
+}
+
+.ribbon-label {
+  font-size: 10px;
+  color: #64748b;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.ribbon-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.text-cyan { color: #38bdf8 !important; }
+.text-emerald { color: #34d399 !important; }
+.text-rose { color: #fb7185 !important; }
+
+/* Preset Mission Chips */
+.preset-bar {
+  background: #090e1a;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+}
+
+.preset-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+.preset-chip {
+  background: #1e293b;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 9999px;
+  padding: 4px 12px;
+  color: #cbd5e1;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.preset-chip:hover {
+  background: #334155;
+  color: #ffffff;
+  border-color: #38bdf8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.25);
+}
+
+.chip-dot {
   width: 8px;
   height: 8px;
-  background-color: #10b981;
+  border-radius: 50%;
+}
+
+/* Cyberpunk POV HUD Overlay */
+.viewport-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+  font-family: monospace;
+}
+
+.pov-hud-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 16px;
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+
+.hud-compass-bar {
+  align-self: center;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  padding: 4px 14px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #38bdf8;
+  letter-spacing: 1px;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+}
+
+.hud-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reticle-box {
+  width: 90px;
+  height: 90px;
+  border: 1.5px dashed rgba(56, 189, 248, 0.5);
+  border-radius: 6px;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
+}
+
+.reticle-cross {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+}
+
+.reticle-cross::before, .reticle-cross::after {
+  content: '';
+  position: absolute;
+  background: #06b6d4;
+  box-shadow: 0 0 8px #06b6d4;
+}
+
+.reticle-cross::before {
+  top: 7px; left: 0; width: 16px; height: 2px;
+}
+
+.reticle-cross::after {
+  left: 7px; top: 0; width: 2px; height: 16px;
+}
+
+.reticle-range {
+  position: absolute;
+  bottom: -22px;
+  font-family: monospace;
+  font-size: 11px;
+  color: #38bdf8;
+  background: rgba(15, 23, 42, 0.8);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.hud-bottom-telemetry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: monospace;
+  font-size: 11px;
+  color: rgba(203, 213, 225, 0.75);
+  background: rgba(15, 23, 42, 0.6);
+  padding: 6px 12px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+/* AI Tabs Switcher */
+.ai-tabs-container {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ai-tab-buttons {
+  display: flex;
+  background: #090e1a;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ai-tab {
+  flex: 1;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ai-tab:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ai-tab.active {
+  color: #38bdf8;
+  border-bottom-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.ai-tab-panel {
+  padding: 14px 18px;
+}
+
+.radar-dot {
+  width: 8px;
+  height: 8px;
+  background: #10b981;
   border-radius: 50%;
   box-shadow: 0 0 8px #10b981;
   animation: pulse 1.5s infinite;
@@ -259,6 +491,34 @@ body {
 
 .action-btn.btn-fail {
   background: #e11d48;
+}
+
+/* Pollinations AI Card Styling */
+.poll-card {
+  border: 1px solid rgba(236, 72, 153, 0.4);
+  background: linear-gradient(180deg, rgba(80, 7, 36, 0.35) 0%, rgba(15, 23, 42, 0.8) 100%);
+  box-shadow: 0 4px 20px rgba(236, 72, 153, 0.15);
+}
+
+.poll-badge {
+  background: linear-gradient(135deg, #ec4899, #be185d);
+  color: #ffffff;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
+}
+
+.btn-poll {
+  background: linear-gradient(135deg, #db2777, #9d174d);
+  box-shadow: 0 0 12px rgba(219, 39, 119, 0.35);
+}
+
+.btn-poll:hover {
+  filter: brightness(1.2);
+  box-shadow: 0 0 18px rgba(219, 39, 119, 0.5);
 }
 
 /* Local Ollama Controller Styling */

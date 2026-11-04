@@ -206,12 +206,29 @@ export class ViewsManager {
     const rRadiusPx = this.robot.radius * scale;
     const rad = (this.robot.pose.heading * Math.PI) / 180;
 
-    // FOV Wedge (90 degrees = +/- 45 deg)
-    const fovAngle = (45 * Math.PI) / 180;
-    const fovDistPx = 2.0 * scale; // 2m vision cone visualization
+    // Concentric Range Rings (1m, 2m, 3m) from Robot Center
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.18)';
+    ctx.lineWidth = 1;
+    [1.0, 2.0, 3.0].forEach(r => {
+      ctx.beginPath();
+      ctx.arc(rcx, rcy, r * scale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
+      ctx.font = '8px monospace';
+      ctx.fillText(`${r}m`, rcx + r * scale + 2, rcy + 3);
+    });
 
-    ctx.fillStyle = 'rgba(6, 182, 212, 0.15)';
-    ctx.strokeStyle = 'rgba(6, 182, 212, 0.6)';
+    // Full Arena FOV Vision Cone (90 degrees = +/- 45 deg, sees all the way to the far walls)
+    const fovAngle = (45 * Math.PI) / 180;
+    const fovDistPx = roomSize * scale * 1.2;
+
+    const fovGrad = ctx.createRadialGradient(rcx, rcy, 10, rcx, rcy, fovDistPx);
+    fovGrad.addColorStop(0, 'rgba(6, 182, 212, 0.25)');
+    fovGrad.addColorStop(0.7, 'rgba(6, 182, 212, 0.08)');
+    fovGrad.addColorStop(1, 'rgba(6, 182, 212, 0.01)');
+
+    ctx.fillStyle = fovGrad;
+    ctx.strokeStyle = 'rgba(6, 182, 212, 0.35)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(rcx, rcy);
@@ -266,6 +283,56 @@ export class ViewsManager {
     if (lastTool) {
       el('hudLastAction').textContent = `${lastTool}(${lastArgs ? JSON.stringify(lastArgs) : ''})`;
     }
+
+    // Top Telemetry Ribbon Updates
+    if (el('ribbonHeading')) el('ribbonHeading').textContent = `${this.robot.pose.heading.toFixed(0)}°`;
+    if (el('ribbonHolding')) {
+      el('ribbonHolding').textContent = this.robot.holding ? 'CARRYING' : 'EMPTY';
+      el('ribbonHolding').style.color = this.robot.holding ? '#34d399' : '#f8fafc';
+    }
+    if (el('ribbonCollisions')) el('ribbonCollisions').textContent = this.robot.stats.collisions;
+
+    // Laser Center Depth
+    let depthVal = this.robot.getCenterDepth();
+    const depthStr = depthVal !== null ? `${depthVal.toFixed(2)}m` : 'OPEN (>10m)';
+    if (el('ribbonDepth')) el('ribbonDepth').textContent = depthStr;
+
+    // Cyberpunk POV HUD Overlay Updates
+    const hudOverlay = el('povHudOverlay');
+    if (hudOverlay) {
+      if (this.viewMode === 'pov') {
+        hudOverlay.style.display = 'flex';
+        if (el('hudCompassDeg')) el('hudCompassDeg').textContent = `${this.robot.pose.heading.toFixed(0)}° ${this.getCardinal(this.robot.pose.heading)}`;
+        if (el('hudReticleDist')) {
+          el('hudReticleDist').textContent = `RANGE: ${depthStr}`;
+          el('hudReticleDist').style.color = (depthVal !== null && depthVal <= 0.55) ? '#34d399' : '#38bdf8';
+        }
+        if (el('hudStatusTag')) el('hudStatusTag').textContent = `STATUS: ${this.robot.stateName.toUpperCase()}`;
+      } else {
+        hudOverlay.style.display = 'none';
+      }
+    }
+
+    if (el('camModeTitle')) {
+      const titles = {
+        'pov': 'CAMERA: ROBOT POV (90° FOV)',
+        'follow': 'CAMERA: THIRD-PERSON CHASE',
+        'orbit': 'CAMERA: TACTICAL ORBIT DOME'
+      };
+      el('camModeTitle').textContent = titles[this.viewMode] || 'CAMERA: ACTIVE';
+    }
+  }
+
+  getCardinal(deg) {
+    const d = (deg + 360) % 360;
+    if (d >= 337.5 || d < 22.5) return 'E';
+    if (d >= 22.5 && d < 67.5) return 'SE';
+    if (d >= 67.5 && d < 112.5) return 'S';
+    if (d >= 112.5 && d < 157.5) return 'SW';
+    if (d >= 157.5 && d < 202.5) return 'W';
+    if (d >= 202.5 && d < 247.5) return 'NW';
+    if (d >= 247.5 && d < 292.5) return 'N';
+    return 'NE';
   }
 }
 
