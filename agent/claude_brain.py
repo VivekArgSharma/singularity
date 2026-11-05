@@ -29,13 +29,19 @@ Picking up: pickup succeeds when the thing's surface is within 0.5 m of the robo
 
 arc(radius, degrees) drives along a true circle whose centre is radius metres to the robot's right (degrees > 0, clockwise) or left (degrees < 0); the heading stays tangent to the circle. To circle around something: get to a point at the chosen radius from its centre (object radius + 0.2 m robot + at least 0.25 m clearance), turn so the object is exactly 90 degrees to your right, then arc(radius, 360) once per loop. When carrying an object, circle anticlockwise (object on the left) so the carried object stays outside the circle.
 
+Speed: use speed 1.0 for ordinary driving and turning. Slow down (0.3 to 0.5) only for the last 0.5 m before a pickup.
+
+Before a long move, check the depth: never drive farther straight ahead than the depth minus 0.3 m.
+
+What the camera cannot see: the floor closer than about 0.67 m ahead of the robot's centre is below the bottom of the image. A flat marking on the floor therefore slides out of the bottom of the image as you approach it; that is expected, not a reason to back up. A carried object sits 0.62 m ahead of the robot's centre and 0.36 m to its right. To set it down on a floor marking: from where the whole marking is in view, turn so the marking's middle lines up with the carried object at the bottom-right of the image, note the distance to the marking's middle, and drive that distance in one move (when the marking's near edge leaves the image, the carried object is at that near edge). Then drop. Do not shuffle back and forth to see the marking again.
+
 If a move reports collided, the robot has already backed off 0.1 m. More than 3 collisions ends the run, so plan around obstacles.
 
 Instructions may be indirect or need reasoning about what the person means; work it out from what you see.
 
 To search: turn 45 degrees and look, up to 8 times; if nothing fits after a full turn, drive about 2 m towards open space and search again. Once a likely target is seen: turn until it is in the middle of the image, check the depth, drive part of the way, then look again. Confirm it is the right thing at close range before pickup. Stay direct once the target is confirmed.
 
-Work step by step: look at the image, decide one action, call one tool. Every call reports what you see (`observations`: each distinct thing in view and where it is in the image), what you are going for (`target`, or "none yet") and how sure you are (`confidence`, 0 to 1). When the instruction is fully carried out, or cannot be, call done."""
+Work step by step: look at the image, decide one action, call one tool. Every call reports what you see (`observations`: each distinct thing in view and where it is in the image), what you are going for (`target`, or "none yet"), how sure you are (`confidence`, 0 to 1) and your running `notes`. Only the newest image is kept, so the notes are your memory: where you have seen each relevant thing (as x, y estimates from the robot's pose), what is done, and the next steps. Carry forward what still matters each time. When the instruction is fully carried out, or cannot be, call done."""
 
 
 THINKING = {
@@ -43,6 +49,8 @@ THINKING = {
                      "description": "Each distinct thing in view now, and where it is in the image."},
     "target": {"type": "string", "description": "What you are going for and why, or 'none yet'."},
     "confidence": {"type": "number", "description": "0 to 1: how sure you are about the target."},
+    "notes": {"type": "string", "description": "Running memory: where relevant things are (x, y estimates), "
+                                               "what is done, next steps."},
 }
 
 
@@ -131,8 +139,9 @@ class ClaudeBrain:
             args = dict(call.input)
             seen = args.pop("observations", []) or []
             target, conf = args.pop("target", ""), args.pop("confidence", None)
+            notes = args.pop("notes", "")
             self.emit("thinking", text=f"target: {target} ({conf})" + (f" | sees: {'; '.join(seen)}" if seen else ""),
-                      observations=seen, target=target, confidence=conf)
+                      observations=seen, target=target, confidence=conf, notes=notes)
             if call.name == "done":
                 return bool(args.get("success")), str(args.get("summary", ""))
             result = self._execute(call.name, args)
