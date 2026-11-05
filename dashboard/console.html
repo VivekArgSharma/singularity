@@ -212,9 +212,21 @@ function pump(img, name, idle, busy) {
     t.onload = () => { img.src = t.src; next(); }; t.onerror = next; t.src = `/admin/view/${name}?t=${Date.now()}`; }
   load();
 }
-pump($("v-look"), "look", 1000, 100); pump($("v-chase"), "chase", 1500, 200); pump($("v-top"), "top", 2000, 300);
+// live MJPEG streams (smooth); a view whose stream fails falls back to one picture at a time
+const streams = {};
+function stream(img, name, fps, idle, busy) {
+  const s = { on: true, fellBack: false };
+  s.url = () => `/admin/stream/${name}?fps=${slowViews ? Math.max(2, Math.round(fps / 3)) : fps}&t=${Date.now()}`;
+  s.start = () => { if (!s.fellBack) img.src = s.url(); };
+  s.stop = () => { if (!s.fellBack) img.removeAttribute("src"); };
+  img.onerror = () => { if (s.fellBack || !img.getAttribute("src")) return; s.fellBack = true; img.onerror = null; pump(img, name, idle, busy); };
+  streams[name] = s;
+  if (!(name === "top" && showMap)) s.start();
+}
+stream($("v-look"), "look", 30, 1000, 100); stream($("v-chase"), "chase", 15, 1500, 200); stream($("v-top"), "top", 10, 2000, 300);
 function setMapMode() { $("map").hidden = !showMap; $("v-top").hidden = showMap; $("mapbtn").classList.toggle("on", showMap);
-  $("toptag").firstChild.textContent = showMap ? "robot map " : "top-down "; }
+  $("toptag").firstChild.textContent = showMap ? "robot map " : "top-down ";
+  if (streams.top) { showMap ? streams.top.stop() : streams.top.start(); } }
 $("mapbtn").onclick = () => { showMap = !showMap; store.set("hk-map", showMap ? "1" : "0"); setMapMode(); };
 setMapMode();
 
@@ -354,7 +366,8 @@ function wireSection(v) {
   if (v === "settings") {
     const c = $("set-cursor"); c.checked = store.get("hk-cursor", "1") === "1";
     c.onchange = () => { store.set("hk-cursor", c.checked ? "1" : "0"); document.body.classList.toggle("still-cursor", !c.checked); };
-    const sl = $("set-slow"); sl.checked = slowViews; sl.onchange = () => { slowViews = sl.checked; store.set("hk-slow", slowViews ? "1" : "0"); };
+    const sl = $("set-slow"); sl.checked = slowViews; sl.onchange = () => { slowViews = sl.checked; store.set("hk-slow", slowViews ? "1" : "0");
+      Object.entries(streams).forEach(([n, st]) => { if (!(n === "top" && showMap)) st.start(); }); };
 
   }
 }

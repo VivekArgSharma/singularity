@@ -88,6 +88,12 @@ def main():
         for el in ('id="prompt"', 'id="pause"', 'id="resume"', 'id="stop"', 'id="v-chase"', 'id="v-look"', 'id="v-top"',
                    'id="map"', 'id="log-lines"', '/admin/mission', '/admin/instruct', 'data-view="objectives"', 'data-view="runs"', 'href="/dashboard/engineering.html"'):
             check(f"console has {el}", el in page)
+        check("console plays the views as live streams", "/admin/stream/" in page)
+        with urllib.request.urlopen(ADMIN + "/admin/stream/look?fps=10", timeout=30) as s:
+            ctype = s.headers.get("Content-Type", "")
+            head = s.read(400)
+        check("stream is MJPEG and starts with a JPEG frame",
+              ctype.startswith("multipart/x-mixed-replace") and b"image/jpeg" in head and b"\xff\xd8" in head, ctype)
         for asset in ("title-screen.jpg", "title.png", "logo-robot.png", "ico-send.png", "corner-left.png"):
             code, ctype, _ = get(ADMIN, f"/dashboard/assets/{asset}")
             check(f"asset {asset} served", code == 200 and "image" in ctype)

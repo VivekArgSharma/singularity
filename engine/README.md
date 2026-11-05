@@ -54,7 +54,7 @@ Every reply passes a key whitelist (`api.py`). A second action while one is runn
 
 ## Operator API — 127.0.0.1:8081 (harness + dashboard only, never given to the agent)
 
-Harness: `POST /admin/reset {level, seed}` · `POST /admin/command {text, run_id}` (Idle → Locate, starts clip recording) · `POST /admin/giveup` · `POST /admin/verdict {pass}` · `GET /admin/result` → `{outcome, sim_seconds, collisions, path_length, delivered, ...}` · `GET /admin/view/<look|chase|top|window>`
+Harness: `POST /admin/reset {level, seed}` · `POST /admin/command {text, run_id}` (Idle → Locate, starts clip recording) · `POST /admin/giveup` · `POST /admin/verdict {pass}` · `GET /admin/result` → `{outcome, sim_seconds, collisions, path_length, delivered, ...}` · `GET /admin/view/<look|chase|top|window>` · `GET /admin/stream/<look|chase|top>?fps=N` (the same view as a live MJPEG stream, up to 30 fps; 4 on low-memory servers)
 
 Console: `GET /` (title screen) · `GET /dashboard/console.html` (live console) · `GET /dashboard/engineering.html` (map and route numbers) · `POST /admin/instruct {text}` · `POST /admin/pause` · `POST /admin/resume` · `POST /admin/stop` · `GET /admin/status` · `GET /admin/runs` · `GET /admin/runs/<run_id>/<file>` · `POST /admin/open_folder {run_id?}` · `POST /admin/mission {mission, seed}` · `GET /admin/perf` (frame pacing; `POST {"reset": true}` starts a new window)
 

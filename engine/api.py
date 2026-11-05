@@ -8,6 +8,7 @@ import math
 import os
 import re
 import threading
+import time
 from pathlib import Path
 
 from flask import Flask, Response, jsonify, request, send_from_directory
@@ -278,6 +279,37 @@ def make_admin_app(engine, ctl=None):
         if status != 200:
             return jsonify({"error": result}), status
         return Response(result, mimetype="image/jpeg")
+
+    @app.get("/admin/stream/<name>")
+    def stream(name):
+        """The same view as a live MJPEG stream: one connection, frames pushed at a steady rate,
+        so the browser plays it smoothly instead of asking for one picture at a time."""
+        if name not in ("look", "chase", "top"):
+            return jsonify({"error": "stream must be look, chase or top"}), 400
+        try:
+            fps = max(1, min(30, int(request.args.get("fps", 20))))
+        except ValueError:
+            fps = 20
+        if os.environ.get("FETCH_LOWMEM", "") in ("1", "true", "yes"):
+            fps = min(fps, 4)                     # small servers render on the CPU: keep their frames for the robot
+
+        def frames():
+            period, due = 1.0 / fps, time.time()
+            while True:
+                status, jpg = engine.call("view", name=name)
+                if status != 200:
+                    return
+                yield (b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: " + str(len(jpg)).encode()
+                       + b"\r\n\r\n" + jpg + b"\r\n")
+                due += period
+                wait = due - time.time()
+                if wait > 0:
+                    time.sleep(wait)
+                else:
+                    due = time.time()
+
+        return Response(frames(), mimetype="multipart/x-mixed-replace; boundary=frame",
+                        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 
     return app
 
