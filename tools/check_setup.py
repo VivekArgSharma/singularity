@@ -78,7 +78,7 @@ report(bool(key), "ANTHROPIC_API_KEY set", "set (value not shown)" if key else
        "empty: the free local planner runs; put the key in .env for the Claude agent", blocking=False)
 use = os.environ.get("USE_CLAUDE_API", "false").strip().lower() in ("1", "true", "yes", "on")
 report(not (use and not key), "agent at start-up", (f"USE_CLAUDE_API={'true' if use else 'false'} -> "
-       + ("Claude, model " + os.environ.get("AGENT_MODEL", "claude-sonnet-5-5") if use and key else
+       + ("Claude, model " + os.environ.get("AGENT_MODEL", "claude-haiku-5-5") if use and key else
           "free local planner" + (" (key missing!)" if use else ""))), blocking=False)
 print(f"\n{bad} blocking problem(s)")
 sys.exit(1 if bad else 0)

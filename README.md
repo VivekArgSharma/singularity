@@ -29,7 +29,7 @@ Open http://127.0.0.1:8081/, press PLAY and type a command, e.g. "Bring the red 
 Restart the engine after changing `.env`. The console shows which agent is active but cannot switch it. `.env` is git-ignored: never commit it, never show it in a clip.
 
 Built-in defaults:
-- model: Claude Sonnet 5.5
+- model: Claude Haiku 5.5 (set `AGENT_MODEL=claude-sonnet-5-5` for Sonnet: fewer steps, about 10x the cost)
 - spend guard: $35 total
 - hard stop: 60 steps per run
 

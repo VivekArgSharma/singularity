@@ -81,7 +81,7 @@ class Controller:
         self.brain = ("claude" if key else "local") if brain == "auto" else brain
         if self.brain == "claude" and not key:
             self.brain = "local"                  # asked for Claude but no key: never start a run that cannot work
-        self.model = os.environ.get("AGENT_MODEL", "claude-sonnet-5-5")
+        self.model = os.environ.get("AGENT_MODEL", "claude-haiku-5-5")
         self.runs_dir = RUNS
         self.lock = threading.RLock()
         self.start_lock = threading.Lock()

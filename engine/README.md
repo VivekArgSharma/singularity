@@ -77,7 +77,7 @@ How a replacement works, so an old task can never act again:
 
 Console mode differs from a graded run in one way: a drop grades the object but does not end the task, so one instruction can include several steps. The operator, not the drop, ends a task.
 
-Agents (`agent/`): `claude_brain.py` is the Claude vision agent (one tool per step, image inside the tool result; needs `ANTHROPIC_API_KEY`; model `claude-sonnet-5-5`). `local_brain.py` is a free offline planner for a fixed set of commands: fetch to the green square or next to another object, pick up, approach (slowly), stop in front of, move behind, circle once / twice / N times, go around an obstacle, move to the green zone, rotate N / turn around, move back N m, move closer, put down. It finds things from colour blobs in the camera image and the depth reading only (`perception.py`), never ground truth, and routes around objects it has seen.
+Agents (`agent/`): `claude_brain.py` is the Claude vision agent (one tool per step, image inside the tool result; needs `ANTHROPIC_API_KEY`; model `claude-haiku-5-5`). `local_brain.py` is a free offline planner for a fixed set of commands: fetch to the green square or next to another object, pick up, approach (slowly), stop in front of, move behind, circle once / twice / N times, go around an obstacle, move to the green zone, rotate N / turn around, move back N m, move closer, put down. It finds things from colour blobs in the camera image and the depth reading only (`perception.py`), never ground truth, and routes around objects it has seen.
 
 ## The robot's map (`agent/mapping.py`, `agent/explore.py`)
 

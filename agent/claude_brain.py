@@ -12,7 +12,7 @@ import anthropic
 
 from budget import Budget
 
-MODEL = os.environ.get("AGENT_MODEL", "claude-sonnet-5-5")
+MODEL = os.environ.get("AGENT_MODEL", "claude-haiku-5-5")
 MAX_STEPS = int(os.environ.get("AGENT_MAX_STEPS", "60"))
 KEEP_IMAGES = 1            # the problem statement: only the latest camera image is sent
 EFFORT = os.environ.get("AGENT_EFFORT", "medium")   # one small action per step: medium keeps each step quick
