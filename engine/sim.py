@@ -40,6 +40,10 @@ class Engine:
             loadPrcFileData("", line)
         if headless:
             loadPrcFileData("", "window-type offscreen")
+            loadPrcFileData("", "notify-level-device fatal")      # servers have no /dev/input: keyboard/mouse probing is noise
+            if os.environ.get("FETCH_LOWMEM") == "1":
+                loadPrcFileData("", "framebuffer-multisample 0")  # software rendering has no MSAA anyway
+                loadPrcFileData("", "multisamples 0")
         else:
             loadPrcFileData("", "clock-mode limited")
             loadPrcFileData("", f"clock-frame-rate {FPS}")
