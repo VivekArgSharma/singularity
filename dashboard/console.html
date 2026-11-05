@@ -36,13 +36,16 @@ button, input, select { font: inherit; }
 .stage.is-closed .window-state { inset: 0; z-index: 12; }
 /* navigation */
 .navigation { position: absolute; left: 17px; top: 150px; width: 192px; }
-.nav { display: flex; align-items: center; gap: 16px; height: 62px; margin-bottom: 8px; padding-left: 14px; border: 3px solid transparent; border-radius: 12px;
+.nav { display: flex; align-items: center; gap: 16px; height: 58px; margin-bottom: 5px; padding-left: 14px; border: 3px solid transparent; border-radius: 12px;
        color: var(--ink); text-decoration: none; font-size: 17px; font-weight: bold; letter-spacing: .5px; cursor: pointer; background: none; width: 100%; white-space: nowrap; }
 .nav img { width: 44px; height: 44px; object-fit: contain; image-rendering: pixelated; }
 .nav img.inv { filter: invert(1); }
 .nav:hover { border-color: #777; }
 .nav.active { border-color: var(--ink); background: var(--ink); color: var(--bg); }
 .nav.active img { filter: none; }
+.nav svg { width: 44px; height: 44px; flex: none; shape-rendering: crispEdges; }
+.nav.eng { border-color: #6a6a6a; border-style: dashed; gap: 10px; padding-left: 10px; letter-spacing: 0; }
+.nav.eng:hover { border-color: var(--pump); border-style: solid; color: var(--pump); }
 .nav.active img.inv { filter: invert(0); }
 .nav:not(.active) img.home { filter: invert(1); }
 /* panes */
@@ -133,6 +136,7 @@ video { width: 100%; max-height: 300px; border: 2px solid var(--ink); background
      <button class="nav" data-view="free-reign"><img src="/dashboard/assets/ico-free.png" alt="">FREE REIGN</button>
      <button class="nav" data-view="runs"><img src="/dashboard/assets/ico-runs.png" alt="">RUNS</button>
      <button class="nav" data-view="settings"><img src="/dashboard/assets/ico-settings.png" alt="">SETTINGS</button>
+     <a class="nav eng" href="/dashboard/engineering.html" title="Robot map heatmap, coverage, routes and all the numbers"><svg viewBox="0 0 11 11" aria-hidden="true"><rect x="0" y="0" width="11" height="11" fill="none" stroke="#fff" stroke-width="1"/><rect x="2" y="2" width="2" height="2" fill="#5a2a00"/><rect x="4.5" y="2" width="2" height="2" fill="#ff8b00"/><rect x="7" y="2" width="2" height="2" fill="#a04f00"/><rect x="2" y="4.5" width="2" height="2" fill="#ff8b00"/><rect x="4.5" y="4.5" width="2" height="2" fill="#ffd28a"/><rect x="7" y="4.5" width="2" height="2" fill="#ff8b00"/><rect x="2" y="7" width="2" height="2" fill="#a04f00"/><rect x="4.5" y="7" width="2" height="2" fill="#ff8b00"/><rect x="7" y="7" width="2" height="2" fill="#5a2a00"/></svg>ENGINEERING</a>
    </nav>
 
    <div class="frame p-main"><span class="tag">robot camera 640×480 – what the agent sees</span><img class="pane-img" id="v-look" alt="What the robot sees">

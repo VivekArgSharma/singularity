@@ -86,7 +86,7 @@ def main():
         page = html.decode()
         check("console served", code == 200 and "text/html" in ctype)
         for el in ('id="prompt"', 'id="pause"', 'id="resume"', 'id="stop"', 'id="v-chase"', 'id="v-look"', 'id="v-top"',
-                   'id="map"', 'id="log-lines"', '/admin/mission', '/admin/instruct', 'data-view="objectives"', 'data-view="runs"'):
+                   'id="map"', 'id="log-lines"', '/admin/mission', '/admin/instruct', 'data-view="objectives"', 'data-view="runs"', 'href="/dashboard/engineering.html"'):
             check(f"console has {el}", el in page)
         for asset in ("title-screen.jpg", "title.png", "logo-robot.png", "ico-send.png", "corner-left.png"):
             code, ctype, _ = get(ADMIN, f"/dashboard/assets/{asset}")
