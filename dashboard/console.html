@@ -227,7 +227,11 @@ function renderStatus(s) {
   live = !!t && ["Starting", "Running"].includes(t.status);
   const und = t && t.understood && t.understood.toLowerCase().replace(/[.!?]$/, "") !== t.command.toLowerCase().replace(/[.!?]$/, "")
     ? `<br><span class="pump">understood as:</span> ${esc(t.understood)}` : "";
-  $("taskbox").innerHTML = (t ? `<b>${esc(t.status.toUpperCase())}</b> · ${esc(t.command)}${und}<br>${esc(t.result || t.thought || "…")}`
+  // between actions the clock is frozen while Claude reads the newest image and picks the next action
+  const lastEv = t && t.events && t.events.length ? t.events[t.events.length - 1].type : null;
+  const deciding = live && t.brain === "claude" && (!lastEv || lastEv === "result")
+    ? `<br><span class="pump">● Claude is choosing the next move (about 3 s per step)…</span>` : "";
+  $("taskbox").innerHTML = (t ? `<b>${esc(t.status.toUpperCase())}</b> · ${esc(t.command)}${und}<br>${esc(t.result || t.thought || "…")}${deciding}`
                               : `Waiting for task… <span class="pump">(${esc(s.brain)} agent)</span>`) +
     (m ? `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #555"><b>${esc(m.title.toUpperCase())}</b> · verified by the simulator<br>${missionVerify(m.mission)}</div>` : "");
   const room = Math.max(3, Math.floor($("log-lines").clientHeight / 23));   // only what fits in the panel
