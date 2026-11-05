@@ -30,6 +30,7 @@ DEST_WORDS = r"finish(?: line| zone| area| state| tile| point)?|destination|goal
 ZONE = re.compile(r"green (zone|square|area|patch|box|block|pad|mat|tile)|\bthe zone\b|\b(?:" + DEST_WORDS + r")\b")
 COUNT = {"once": 1, "one time": 1, "twice": 2, "two times": 2, "thrice": 3, "three times": 3}
 CARRY_AHEAD, CARRY_SIDE, ROBOT_R = 0.62, 0.36, 0.2
+STOW_AHEAD, STOW_SIDE, HAND_R = 0.10, 0.27, 0.08     # folded empty hand (engine/robot.py)
 
 
 def fwd(h):
@@ -138,16 +139,20 @@ class LocalBrain:
                 self.emit("warning", text=f"map not saved: {type(e).__name__}: {e}")
 
     def _sweep_clear(self, h0, delta):
-        """Would the carried object hit anything seen so far while turning by delta?"""
+        """Would the carried object, or the folded empty hand, hit anything seen so far while turning by delta?"""
         s = self.s
+        holding = bool(s.get("holding"))
+        ahead, side, pad = (CARRY_AHEAD, CARRY_SIDE, 0.24) if holding else (STOW_AHEAD, STOW_SIDE, HAND_R + 0.05)
         n = max(2, int(abs(delta) / 5))
         for k in range(n + 1):
             h = h0 + delta * k / n
             fx, fy = fwd(h)
             rx, ry = fwd(h + 90)
-            cx, cy = s["x"] + fx * CARRY_AHEAD + rx * CARRY_SIDE, s["y"] + fy * CARRY_AHEAD + ry * CARRY_SIDE
+            cx, cy = s["x"] + fx * ahead + rx * side, s["y"] + fy * ahead + ry * side
             for c, r in self.map.values():
-                if math.dist((cx, cy), c) < r + 0.24:
+                if not holding and self.lock is not None and math.dist(c, self.lock) < 0.3:
+                    continue                     # the thing being approached: facing it is the point
+                if math.dist((cx, cy), c) < r + pad:
                     return False
             if self.cmap is not None:
                 j, i = self.cmap.idx(cx, cy)
@@ -156,19 +161,62 @@ class LocalBrain:
                     return False
         return True
 
+    def _step_clear(self, dist):
+        """Could the body drive `dist` straight (negative = backwards) without touching anything mapped?"""
+        s = self.st()
+        fx, fy = fwd(s["heading"])
+        a = (s["x"], s["y"])
+        b = (a[0] + fx * dist, a[1] + fy * dist)
+        if not self.segment_clear(a, b):
+            return False
+        L2 = (b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 or 1e-9
+        for c, r in self.map.values():
+            t = max(0.0, min(1.0, ((c[0] - a[0]) * (b[0] - a[0]) + (c[1] - a[1]) * (b[1] - a[1])) / L2))
+            if math.dist(c, (a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]))) < r + ROBOT_R + 0.05:
+                return False
+        return True
+
+    def _make_room(self):
+        """Step out of a tight spot: back the way we came if that is clear (it usually is), else forward
+        if the map and the depth ray both say so, else back anyway (backing never swings the hand)."""
+        if self._step_clear(-0.25):
+            self.say("No room to turn here; backing up first.")
+            self.cl.move(-0.25)
+            return
+        d = self.cl.depth()
+        if (d is None or d > 0.7) and self._step_clear(0.3):
+            self.say("No room to turn here; moving forward into free space first.")
+            self.cl.move(0.3)
+            return
+        self.say("No room to turn here; backing up a little.")
+        self.cl.move(-0.15)
+
+    def back_off(self, dist=0.3):
+        """Step back from what was just put down, only as far as the map says is clear behind."""
+        for d in (dist, dist / 2):
+            if self._step_clear(-d):
+                return self.cl.move(-d)
+        self.say("Something is right behind me; staying put instead of backing up.")
+        return {"moved": 0.0, "collided": False}
+
     def _carry_turn(self, deg):
-        """Turning while carrying: pick the direction whose sweep is clear, backing up if neither is."""
+        """Pick the turn direction whose sweep is clear (the carried object, or the folded empty hand,
+        reaches past the body), making room first if neither is."""
         if abs(deg) < 8:
             return deg
+        holding = bool(self.st()["holding"])
         for attempt in range(2):
             h0 = self.st()["heading"]
             for d in (deg, deg - 360 if deg > 0 else deg + 360):
                 if self._sweep_clear(h0, d):
                     return d
-            self.say("Turning here would swing the load into something; backing up first.")
-            if attempt == 0 and self.open_space():
-                continue
-            self.cl.move(-0.3)
+            if holding:
+                self.say("Turning here would swing the load into something; backing up first.")
+                if attempt == 0 and self.open_space():
+                    continue
+                self.cl.move(-0.3)
+            else:
+                self._make_room()
         return deg
 
     def turn(self, deg, speed=None):
@@ -188,13 +236,7 @@ class LocalBrain:
             self._turned += got
             if abs(got - deg) < 1.0:
                 return
-            d = self.cl.depth()
-            if d is None or d > 0.7:
-                self.say("The turn was blocked; moving forward into free space first.")
-                self.cl.move(0.3)
-            else:
-                self.say("The turn was blocked; backing up to make room.")
-                self.cl.move(-0.25)
+            self._make_room()                    # the turn was blocked: never drive blindly into it
             deg -= got
 
     def face_point(self, p):
@@ -569,7 +611,7 @@ class LocalBrain:
     def put_down_here(self):
         self.say("Putting down the object I am holding first.")
         self.drop()
-        self.move(-0.3)
+        self.back_off()
 
     def deliver_zone(self):
         z = self.zone_w
@@ -591,7 +633,7 @@ class LocalBrain:
         p = pose_for(z)
         if self.cmap is not None and self.go_point(p, tol=0.06, final_heading=h):
             r = self.drop()
-            self.cl.move(-0.3)
+            self.back_off()
             return r.get("in_zone", False)
         for _ in range(8):
             s = self.st()
@@ -614,7 +656,7 @@ class LocalBrain:
         s = self.st()
         self.turn(h - s["heading"])
         r = self.drop()
-        self.cl.move(-0.3)
+        self.back_off()
         return r.get("in_zone", False)
 
     def orbit(self, tgt, loops, sweep=None, finish_facing=False):
@@ -944,7 +986,7 @@ class LocalBrain:
             else:
                 raise Fail(f"could not get next to the {dst['name']} (still holding the {tgt['name']})")
             self.drop()
-            self.cl.move(-0.3)
+            self.back_off()
             return f"Put the {tgt['name']} next to the {dst['name']} ({max(0.0, gap):.2f} m apart)."
         if objs and re.search(r"\b(pick|grab|get|lift|collect)\b", t):
             if holding:
