@@ -37,6 +37,21 @@ They can be overridden as environment variables (`AGENT_MODEL`, `AGENT_BUDGET_US
 
 Ports: 8080 = agent API (camera, state, depth, scan, actions); 8081 = operator API and console (never given to the agent).
 
+## Deploy (Render)
+
+The repository includes a `Dockerfile` and a Render blueprint (`render.yaml`).
+1. On Render: **New + → Blueprint**, then pick this repository. Render builds the image and starts the service.
+2. It generates `CONSOLE_PASSWORD`; everyone opening the URL needs it (any user name).
+3. Optional: add `ANTHROPIC_API_KEY` in the Render dashboard and set `USE_CLAUDE_API=true`.
+
+The container renders on the CPU (no GPU needed), uses about 300 MB of memory, and publishes only the console. The agent API stays inside the container. Measured with Render's limits (512 MB):
+- Starter plan (0.5 CPU): a 10 s fetch takes about 47 s
+- free plan (0.1 CPU): it works but is very slow (about 4.5 min)
+
+On a small server the clip is recorded at 960x720 (`FETCH_LOWMEM=1`, set in the image). `GET /healthz` is the health check.
+
+To test the same image locally: `docker build -t fetch-robot .` then `docker run -p 7860:7860 -e CONSOLE_PASSWORD=pick-one fetch-robot`, and open http://127.0.0.1:7860/.
+
 ## What it does
 
 - **Fetch:** the problem-statement commands, including "the round red thing", "the tallest object", "the cube that is farthest from the green square" and "something to drink". It also handles "put X next to Y". Objects that are not in the room are refused with "Not present", never substituted.

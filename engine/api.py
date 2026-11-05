@@ -127,8 +127,21 @@ RUN_FILES = re.compile(r"^[A-Za-z0-9_.-]{1,80}$")
 
 
 def make_admin_app(engine, ctl=None):
-    """Port 8081: operator only (dashboard, harness). Never given to the agent."""
+    """Port 8081: operator only (dashboard, harness). Never given to the agent.
+    With CONSOLE_PASSWORD set (public deployments) every page and call needs that password (HTTP basic auth)."""
     app = Flask("operator_api")
+    password = os.environ.get("CONSOLE_PASSWORD", "")
+
+    if password:
+        import hmac
+
+        @app.before_request
+        def _gate():
+            if request.path == "/healthz":           # the host's health check: no data, no password
+                return None
+            a = request.authorization
+            if not (a and a.password and hmac.compare_digest(a.password.encode(), password.encode())):
+                return Response("Password required.", 401, {"WWW-Authenticate": 'Basic realm="Claude Bot console"'})
 
     def call(op, **args):
         status, result = engine.call(op, **args)
@@ -144,6 +157,10 @@ def make_admin_app(engine, ctl=None):
             ctl.stop_agent("reset")
             ctl.clear_map()
         return call("reset", level=level, seed=int(b.get("seed", 0)))
+
+    @app.get("/healthz")
+    def healthz():
+        return jsonify({"ok": True})
 
     @app.post("/admin/mission")
     def mission():
@@ -274,11 +291,11 @@ def _port_free(port):
         return s.connect_ex(("127.0.0.1", port)) != 0   # 0 = something is listening
 
 
-def serve(app, port):
+def serve(app, port, host="127.0.0.1"):
     if not _port_free(port):
         raise SystemExit(f"port {port} is already in use (another engine, or Docker on 8081?)")
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
-    srv = make_server("127.0.0.1", port, app, threaded=True)
+    srv = make_server(host, port, app, threaded=True)
     t = threading.Thread(target=srv.serve_forever, daemon=True)
     t.start()
     return srv

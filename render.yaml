@@ -1,0 +1,16 @@
+# Render blueprint: New + > Blueprint > pick this repository.
+# The container renders on the CPU; the free plan (0.1 CPU) works but is slow, starter (0.5 CPU) is usable.
+services:
+  - type: web
+    name: fetch-robot
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: CONSOLE_PASSWORD        # everyone opening the URL needs this password
+        generateValue: true
+      - key: USE_CLAUDE_API          # true + a key = Claude drives the robot (spends API credit)
+        value: "false"
+      - key: ANTHROPIC_API_KEY
+        sync: false                  # set it in the Render dashboard, never in the repository

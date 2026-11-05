@@ -3,379 +3,271 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fetch Robot Operator</title>
+<meta name="theme-color" content="#000000">
+<title>Hackoween — Engineering</title>
 <style>
-:root{
-  --bg:#101114; --panel:#16171b; --panel2:#1b1d22; --line:#26282e; --ink:#e8e8ec; --muted:#8d9099;
-  --dim:#5f626b; --accent:#f2b134; --ok:#57c38a; --warn:#f2b134; --bad:#e2605a; --int:#a58bf0;
-  --mono:ui-monospace,"Cascadia Mono","Consolas",monospace; --sans:"Segoe UI",system-ui,sans-serif;
-}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans)}
-header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--line)}
-header h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.2px}
-.pill{font:600 11px var(--mono);letter-spacing:.8px;padding:4px 9px;border-radius:3px;border:1px solid var(--line);color:var(--muted)}
-.pill.executing{color:var(--ok);border-color:#2c5a43}.pill.paused{color:var(--warn);border-color:#6a5222}
-.pill.waiting{color:var(--muted)}
-.meta{font:12px var(--mono);color:var(--muted)}
-.spacer{flex:1}
-main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(360px,1fr);gap:16px;padding:16px 20px}
-section{background:var(--panel);border:1px solid var(--line);border-radius:6px}
-section>h2{margin:0;padding:10px 14px;font:600 11px var(--mono);letter-spacing:1px;color:var(--muted);
-  text-transform:uppercase;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
-.body{padding:12px 14px}
-.views{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:10px;padding:10px}
-.views figure{margin:0;position:relative;background:#0b0c0e;border:1px solid var(--line);border-radius:4px;overflow:hidden}
-.views img{display:block;width:100%;height:auto}
-.views figcaption{position:absolute;left:8px;top:6px;font:11px var(--mono);color:#cfd0d6;background:rgba(10,11,13,.7);padding:2px 6px;border-radius:2px}
-.side{display:flex;flex-direction:column;gap:10px}
-.col{display:flex;flex-direction:column;gap:16px;min-width:0}
-textarea{width:100%;min-height:64px;resize:vertical;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
-  border-radius:4px;padding:10px;font:15px var(--sans)}
-textarea:focus{outline:1px solid var(--accent);border-color:var(--accent)}
-[hidden]{display:none !important}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-button{font:600 13px var(--sans);padding:8px 14px;border-radius:4px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer}
-button:hover{border-color:#3a3d45}
-button.primary{background:var(--accent);border-color:var(--accent);color:#17130a}
-button.danger{color:var(--bad)}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.chip{font:12px var(--sans);padding:4px 9px;border:1px solid var(--line);border-radius:12px;color:var(--muted);cursor:pointer;background:none}
-.chip:hover{color:var(--ink)}
-.reply{margin-top:10px;font:13px var(--sans);color:var(--ink);min-height:20px}
-dl{display:grid;grid-template-columns:130px minmax(0,1fr);gap:6px 12px;margin:0}
-dt{color:var(--muted);font:12px var(--mono);padding-top:1px}
-dd{margin:0;font:13px var(--mono);overflow-wrap:anywhere}
-.big{font:500 17px var(--sans);line-height:1.35}
-.status{font:600 12px var(--mono)}
-.s-Running,.s-Completed{color:var(--ok)}.s-Paused,.s-Starting{color:var(--warn)}
-.s-Failed{color:var(--bad)}.s-Interrupted,.s-Refined,.s-Stopped{color:var(--int)}
-.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line)}
-.stat{background:var(--panel);padding:10px 12px}
-.stat b{display:block;font:500 18px var(--mono)}
-.stat span{font:11px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
-table{width:100%;border-collapse:collapse;font:12px var(--mono)}
-td,th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{color:var(--muted);font-weight:500}
-td.flag-c{color:var(--bad)}td.flag-i{color:var(--int)}
-.feed{max-height:220px;overflow:auto;font:12px var(--mono)}
-.feed div{padding:3px 0;border-bottom:1px dashed #22242a}
-.feed .k{color:var(--dim);display:inline-block;width:78px}
-.feed .operator{color:var(--accent)}.feed .reply,.feed .system{color:var(--ok)}
-.runs{max-height:260px;overflow:auto}
-.run{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font:12px var(--mono)}
-.run a{color:var(--accent);cursor:pointer;text-decoration:none}
-video{width:100%;border-radius:4px;background:#000;display:block;margin-top:8px}
-video[hidden]{display:none}
-.muted{color:var(--muted)}
-.wide{grid-column:1 / -1}
-.mapwrap{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:16px;padding:12px 14px;align-items:start}
-#map{width:100%;height:auto;background:#0b0c0e;border:1px solid var(--line);border-radius:4px}
-.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font:12px var(--sans);color:var(--muted)}
-.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px}
-@media (max-width:1100px){main{grid-template-columns:1fr}.views{grid-template-columns:1fr}.mapwrap{grid-template-columns:1fr}}
-@media (max-width:560px){main{padding:12px 16px}dl{grid-template-columns:110px 1fr}.grid3{grid-template-columns:repeat(2,1fr)}}
+:root { color-scheme: dark; --ink: #fff; --bg: #000; --dim: #bdbdbd; --mute: #8a8a8a; --line: #3a3a3a;
+        --pump: #ff8b00; --pump2: #ff9218; --ok: #9be7b0; --bad: #ff6b5a; font-family: "Courier New", Courier, monospace; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; }
+button { font: inherit; }
+.viewport { height: 100vh; display: flex; align-items: center; justify-content: center; }
+.stage-wrap { position: relative; flex: none; width: 1600px; height: 900px; }
+.stage { position: absolute; width: 1600px; height: 900px; transform-origin: top left; background: var(--bg); overflow: hidden; }
+.frame { position: absolute; border: 4px solid var(--ink); border-radius: 16px; background: var(--bg);
+         box-shadow: inset 0 0 0 3px var(--bg), inset 0 0 0 5px #6a6a6a; }
+.head { position: absolute; left: 18px; top: 12px; right: 18px; display: flex; align-items: center; gap: 12px;
+        font-size: 20px; font-weight: bold; letter-spacing: 2px; }
+.head img { width: 40px; height: 36px; object-fit: contain; }
+.head { white-space: nowrap; }
+.head small { margin-left: auto; color: var(--mute); font-size: 12px; font-weight: normal; letter-spacing: 1px; overflow: hidden; text-overflow: ellipsis; }
+.rule { position: absolute; left: 18px; right: 18px; top: 56px; border-top: 3px solid var(--ink); }
+.header { left: 8px; top: 4px; width: 1584px; height: 100px; display: block; }
+.header .logo { position: absolute; left: 47px; top: 2px; height: 88px; }
+.header .title { position: absolute; left: 160px; top: 2px; height: 90px; }
+.navbtn { position: absolute; top: 24px; height: 50px; padding: 0 16px; border: 3px solid var(--ink); border-radius: 10px; background: var(--bg);
+          color: var(--ink); font-weight: bold; font-size: 17px; letter-spacing: 1px; cursor: pointer; text-decoration: none; display: flex; align-items: center; z-index: 2; }
+.navbtn:hover { border-color: var(--pump); color: var(--pump); }
+.kick { position: absolute; left: 1290px; top: 78px; color: var(--pump2); font-size: 14px; letter-spacing: 3px; z-index: 2; }
+.p-map { left: 8px; top: 116px; width: 640px; height: 776px; }
+#map { position: absolute; left: 22px; top: 72px; width: 588px; height: 588px; border: 2px solid var(--line); border-radius: 8px; background: #000; }
+.legend { position: absolute; left: 22px; right: 22px; top: 672px; display: flex; flex-wrap: wrap; gap: 6px 8px; font-size: 13px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 2px solid var(--line); border-radius: 7px; white-space: nowrap; }
+.chip i { width: 12px; height: 12px; border: 1px solid #777; display: inline-block; }
+.chip.toggle { cursor: pointer; border-color: var(--ink); }
+.chip.toggle.on { background: var(--ink); color: var(--bg); }
+.p-cov { left: 660px; top: 116px; width: 440px; height: 236px; }
+.bignum { position: absolute; left: 22px; top: 70px; font-size: 64px; font-weight: bold; letter-spacing: 2px; line-height: 1; }
+.bignum small { font-size: 16px; letter-spacing: 1px; color: var(--dim); font-weight: normal; }
+.gt { position: absolute; right: 22px; top: 72px; text-align: right; font-size: 13px; color: var(--dim); line-height: 1.5; }
+.gt b { display: block; color: var(--ok); font-size: 26px; }
+.bar { position: absolute; left: 22px; right: 22px; top: 158px; height: 26px; display: grid; grid-template-columns: repeat(25, 1fr); gap: 4px; }
+.bar span { border: 2px solid var(--line); background: #000; }
+.bar span.on { background: var(--ink); border-color: var(--ink); }
+.bar span.real { box-shadow: inset 0 -6px 0 var(--ok); border-color: var(--ok); }
+.barcap { position: absolute; left: 22px; right: 22px; top: 194px; display: flex; justify-content: space-between; color: var(--mute); font-size: 12px; }
+.p-stats { left: 660px; top: 362px; width: 440px; height: 278px; }
+.grid2 { position: absolute; left: 22px; right: 22px; top: 70px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tile { border: 2px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.tile b { display: block; font-size: 21px; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile span { color: var(--mute); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+.tile.warn b { color: var(--pump); }
+.p-stats .grid2 { top: 66px; gap: 5px; }
+.p-stats .tile { padding: 2px 10px; }
+.p-stats .tile b { font-size: 16px; line-height: 1.25; }
+.p-stats .tile span { font-size: 10px; }
+.p-route { left: 660px; top: 650px; width: 440px; height: 242px; }
+.routebig { position: absolute; left: 22px; top: 68px; right: 22px; display: flex; gap: 10px; align-items: baseline; }
+.routebig b { font-size: 34px; }
+.routebig .algo { margin-left: auto; padding: 3px 10px; border: 2px solid var(--pump); color: var(--pump); border-radius: 7px; font-weight: bold; font-size: 15px; }
+.kv { position: absolute; left: 22px; right: 22px; top: 118px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; font-size: 13px; }
+.kv div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed #333; padding: 3px 0; white-space: nowrap; }
+.kv span { color: var(--mute); }
+.p-robot { left: 1112px; top: 116px; width: 480px; height: 236px; }
+.grid3 { position: absolute; left: 22px; right: 22px; top: 70px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.p-exec { left: 1112px; top: 362px; width: 480px; height: 278px; }
+#exec { position: absolute; left: 18px; right: 18px; top: 66px; bottom: 14px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; font-size: 12px; }
+#exec div { flex: none; display: grid; grid-template-columns: 40px 62px 1fr; gap: 8px; padding: 3px 4px; border-bottom: 1px dashed #262626; white-space: nowrap; overflow: hidden; }
+#exec div em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
+#exec .t { color: var(--mute); } #exec .tool { color: var(--pump2); font-weight: bold; }
+#exec .bump { background: rgba(255, 107, 90, .14); } #exec .bump .tool { color: var(--bad); }
+.p-runs { left: 1112px; top: 650px; width: 480px; height: 242px; }
+#runs { position: absolute; left: 18px; right: 18px; top: 66px; bottom: 14px; overflow: auto; font-size: 13px; }
+#runs div { display: flex; align-items: center; gap: 8px; padding: 5px 4px; border-bottom: 1px dashed #262626; }
+#runs div em { font-style: normal; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn { padding: 3px 8px; border: 2px solid var(--ink); border-radius: 7px; background: var(--bg); color: var(--ink); cursor: pointer; font-size: 12px; font-weight: bold; }
+.btn:hover { border-color: var(--pump); color: var(--pump); }
+.modal { position: absolute; z-index: 9; left: 300px; top: 150px; width: 1000px; height: 640px; }
+.modal[hidden] { display: none; }
+.modal video { position: absolute; left: 22px; top: 70px; width: 948px; height: 544px; background: #000; border: 2px solid var(--line); }
+.pulse { animation: pulse 1.6s ease-out infinite; }
+@keyframes pulse { 0% { opacity: 1; } 70% { opacity: .35; } 100% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>Fetch Robot — Operator</h1>
-  <span id="mode" class="pill waiting">WAITING</span>
-  <span class="meta" id="brain">brain: –</span>
-  <span class="spacer"></span>
-  <span class="meta" id="rec">not recording</span>
-  <span class="meta" id="fps"></span>
-</header>
-<main>
-  <div class="col">
-    <section>
-      <h2>Live <span class="muted" style="text-transform:none;letter-spacing:0">people-only views + what the robot sees</span></h2>
-      <div class="views">
-        <figure><img id="v-chase" alt="Chase camera view of the robot"><figcaption>chase — people only</figcaption></figure>
-        <div class="side">
-          <figure><img id="v-look" alt="Robot camera, 640 by 480"><figcaption>robot camera 640×480</figcaption></figure>
-          <figure><img id="v-top" alt="Top-down view"><figcaption>top-down</figcaption></figure>
-        </div>
-      </div>
-    </section>
-    <section>
-      <h2>Robot's map <span class="muted" style="text-transform:none;letter-spacing:0">built only from its own camera + range scan</span></h2>
-      <div class="mapwrap">
-        <canvas id="map" width="520" height="520" aria-label="Top-down coverage map"></canvas>
-        <div>
-          <div class="legend">
-            <span><i style="background:#1b1d22;border:1px solid #33363d"></i>unknown</span>
-            <span><i style="background:#2c3440"></i>free (range), not seen</span>
-            <span><i style="background:#2f5d4a"></i>seen by camera</span>
-            <span><i style="background:#57c38a"></i>seen just now</span>
-            <span><i style="background:#3d3358"></i>occluded</span>
-            <span><i style="background:#e8e8ec"></i>occupied</span>
-            <span><i style="background:#5a4526"></i>too close for the body (inflated)</span>
-            <span><i style="background:#9aa0aa"></i>driven path</span>
-            <span><i style="background:#6b6f78"></i>previous route (replanned)</span>
-            <label style="cursor:pointer"><input type="checkbox" id="showcost"> Dijkstra time-to-reach map</label>
-            <span><i style="background:#f2b134"></i>viewpoints · plan</span>
-          </div>
-          <dl id="mapstats" style="margin-top:12px"></dl>
-        </div>
-      </div>
-    </section>
-    <section>
-      <h2>Execution</h2>
-      <div class="body">
-        <table><thead><tr><th>task</th><th>tool</th><th>args</th><th>result</th><th>pose after</th></tr></thead>
-        <tbody id="actions"></tbody></table>
-      </div>
-    </section>
-    <section>
-      <h2>Agent feed</h2>
-      <div class="body feed" id="feed"></div>
-    </section>
-  </div>
-  <div class="col">
-    <section>
-      <h2>Instruction</h2>
-      <div class="body">
-        <textarea id="cmd" placeholder="Type an instruction. A new one replaces the current task; questions are answered without stopping it."></textarea>
-        <div class="row" style="margin-top:8px">
-          <button class="primary" id="run">Run</button>
-          <button id="clear">Clear</button>
-          <span class="spacer"></span>
-          <button id="pause">Pause</button>
-          <button id="resume">Resume</button>
-          <button id="stop" class="danger">Stop action</button>
-          <button id="reset" class="danger">Reset environment</button>
-        </div>
-        <div class="chips" id="chips"></div>
-        <div class="reply" id="reply"></div>
-      </div>
-    </section>
-    <section>
-      <h2>Active task <span id="tstatus" class="status"></span></h2>
-      <div class="body">
-        <div class="big" id="tcmd">No task yet</div>
-        <dl style="margin-top:10px">
-          <dt>task id</dt><dd id="tid">–</dd>
-          <dt>current action</dt><dd id="tact">–</dd>
-          <dt>agent says</dt><dd id="tthought">–</dd>
-          <dt>actions</dt><dd id="tcount">–</dd>
-          <dt>result</dt><dd id="tresult">–</dd>
-          <dt>last received</dt><dd id="tlast">–</dd>
-          <dt>interrupted</dt><dd id="tint">–</dd>
-          <dt>outcome</dt><dd id="toutcome">–</dd>
-        </dl>
-        <div class="row" id="judge" hidden style="margin-top:10px">
-          <span class="meta">The grader cannot decide this command. Judge it:</span>
-          <button id="vpass">Mark pass</button><button id="vfail" class="danger">Mark fail</button>
-        </div>
-      </div>
-    </section>
-    <section>
-      <h2>Robot</h2>
-      <div class="grid3">
-        <div class="stat"><b id="r-x">–</b><span>x m</span></div>
-        <div class="stat"><b id="r-y">–</b><span>y m</span></div>
-        <div class="stat"><b id="r-h">–</b><span>heading °</span></div>
-        <div class="stat"><b id="r-hold">–</b><span>holding</span></div>
-        <div class="stat"><b id="r-ret">–</b><span>retries / collisions</span></div>
-        <div class="stat"><b id="r-spd">–</b><span>speed</span></div>
-        <div class="stat"><b id="r-state">–</b><span>engine state</span></div>
-        <div class="stat"><b id="r-trav">–</b><span>travelled (task) m</span></div>
-        <div class="stat"><b id="r-sim">–</b><span>sim time s</span></div>
-      </div>
-    </section>
-    <section>
-      <h2>Outputs <span class="spacer"></span><button id="openall" style="padding:4px 10px;font-size:12px">Open output folder</button></h2>
-      <div class="body">
-        <div class="meta" id="runsdir"></div>
-        <video id="player" controls muted hidden></video>
-        <div class="runs" id="runs"></div>
-      </div>
-    </section>
-    <section>
-      <h2>History</h2>
-      <div class="body"><table><tbody id="hist"></tbody></table></div>
-    </section>
-  </div>
+<main class="viewport">
+ <div class="stage-wrap" id="wrap">
+  <section class="stage" id="stage">
+   <a class="frame header" href="/" title="Title screen"><img class="logo" src="/dashboard/assets/logo-robot.png" alt="">
+     <img class="title" src="/dashboard/assets/title.png" alt="Hackoween robotics simulation challenge, Claude Bot"></a>
+   <a class="navbtn" style="left:1290px" href="/dashboard/console.html">◀ CONSOLE</a>
+   <a class="navbtn" style="left:1460px" href="/">TITLE</a>
+
+   <section class="frame p-map">
+     <div class="head"><img src="/dashboard/assets/ico-free.png" alt="">ROBOT'S MAP<small>own camera + range scan only</small></div><div class="rule"></div>
+     <canvas id="map" width="1176" height="1176"></canvas>
+     <div class="legend" id="legend"></div>
+   </section>
+
+   <section class="frame p-cov">
+     <div class="head">COVERAGE<small>robot's own estimate</small></div><div class="rule"></div>
+     <div class="bignum" id="cov">–</div>
+     <div class="gt">ground truth (operator only)<b id="gt">–</b><span id="gtm"></span></div>
+     <div class="bar" id="bar"></div>
+     <div class="barcap"><span>0 %</span><span>white: robot's estimate · green: real</span><span>100 %</span></div>
+   </section>
+
+   <section class="frame p-stats">
+     <div class="head">EXPLORATION<small>this map</small></div><div class="rule"></div>
+     <div class="grid2" id="stats"></div>
+   </section>
+
+   <section class="frame p-route">
+     <div class="head">ROUTE<small id="routesub">planned path</small></div><div class="rule"></div>
+     <div class="routebig"><b id="rlen">–</b><span id="rtime" style="color:var(--dim)"></span><span class="algo" id="ralgo">–</span></div>
+     <div class="kv" id="route"></div>
+   </section>
+
+   <section class="frame p-robot">
+     <div class="head"><img src="/dashboard/assets/logo-robot.png" alt="">ROBOT<small id="state">–</small></div><div class="rule"></div>
+     <div class="grid3" id="robot"></div>
+   </section>
+
+   <section class="frame p-exec">
+     <div class="head"><img src="/dashboard/assets/ico-logs.png" alt="">EXECUTION<small>last actions</small></div><div class="rule"></div>
+     <div id="exec"></div>
+   </section>
+
+   <section class="frame p-runs">
+     <div class="head"><img src="/dashboard/assets/ico-runs.png" alt="">RUNS<small id="rundir"></small></div><div class="rule"></div>
+     <div id="runs">loading…</div>
+   </section>
+
+   <section class="frame modal" id="modal" hidden>
+     <div class="head"><span id="mtitle">VIDEO</span><small><button class="btn" id="mclose">✕ CLOSE</button></small></div><div class="rule"></div>
+     <video id="player" controls></video>
+   </section>
+  </section>
+ </div>
 </main>
 <script>
 const $ = id => document.getElementById(id);
-const EXAMPLES = ["Bring the red cube to the green square.", "Go and pick up the blue sphere instead.",
-  "Circle around the yellow cylinder twice.", "Move behind the orange cone.", "Approach the red sphere slowly.",
-  "Move to the green zone.", "Rotate 180 degrees.", "Move back 1 m.", "What are you doing?", "How far have you travelled?",
-  "Explore the entire room and map everything you can see.", "Find the orange cone.", "Inspect the red sphere."];
-for (const e of EXAMPLES) { const b = document.createElement("button"); b.className = "chip"; b.textContent = e;
-  b.onclick = () => { $("cmd").value = e; $("cmd").focus(); }; $("chips").appendChild(b); }
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const stage = $("stage"), wrap = $("wrap");
+function fit() { const s = Math.max(0.4, Math.min(innerWidth / 1600, innerHeight / 900));
+  stage.style.transform = `scale(${s})`; wrap.style.width = `${1600 * s}px`; wrap.style.height = `${900 * s}px`; }
+addEventListener("resize", fit); fit();
 
-async function post(path, body) {
-  const r = await fetch(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body || {})});
-  return r.json();
+/* ---------- the robot's own map ---------- */
+const COL = {u: "#000000", s: "#1c1c1c", f: "#474747", r: "#d8d8d8", h: "#2a1f3d", o: "#ffffff", i: "#4b2e10"};
+const LEG = [["u", "unknown"], ["s", "free by range, not seen"], ["f", "seen by camera"], ["r", "seen just now"],
+             ["h", "occluded"], ["o", "occupied"], ["i", "too close for the body"]];
+let showCost = false;
+$("legend").innerHTML = LEG.map(([k, n]) => `<span class="chip"><i style="background:${COL[k]}"></i>${n}</span>`).join("") +
+  `<span class="chip"><i style="background:#cfcfcf;height:3px;border:0"></i>driven</span>` +
+  `<span class="chip"><i style="background:#ff8b00;height:3px;border:0"></i>planned route</span>` +
+  `<span class="chip toggle" id="costbtn"><i style="background:linear-gradient(90deg,#ff8b00,#000)"></i>Dijkstra time-to-reach</span>`;
+$("costbtn").onclick = () => { showCost = !showCost; $("costbtn").classList.toggle("on", showCost); drawMap(); };
+const CMAP = "0123456789abcdefghijklmnopqrstuvwxyz";
+const VIEW = 3.4;
+let S = null, M = null;
+function line(g, pts, px, py) { g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(px(p[0]), py(p[1])) : g.moveTo(px(p[0]), py(p[1]))); g.stroke(); }
+function drawMap() {
+  const cv = $("map"), g = cv.getContext("2d"), W = cv.width;
+  const px = x => (x + VIEW) / (2 * VIEW) * W, py = y => (VIEW - y) / (2 * VIEW) * W;
+  g.fillStyle = "#000"; g.fillRect(0, 0, W, W);
+  g.strokeStyle = "#141414"; g.lineWidth = 2;                       // 1 m grid
+  for (let k = -3; k <= 3; k++) { g.beginPath(); g.moveTo(px(k), 0); g.lineTo(px(k), W); g.stroke();
+    g.beginPath(); g.moveTo(0, py(k)); g.lineTo(W, py(k)); g.stroke(); }
+  const m = M && M.map;
+  if (m) {
+    const n = m.n, c = m.cell, h = m.half, sz = c / (2 * VIEW) * W + 0.8;
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const k = m.grid[j * n + i]; if (k === "u") continue;
+      g.fillStyle = COL[k] || "#333"; g.fillRect(px(-h + i * c), py(-h + (j + 1) * c), sz, sz); }
+    if (showCost && m.costmap) for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const ch = m.costmap[j * n + i]; if (ch === ".") continue; const v = CMAP.indexOf(ch) / (CMAP.length - 1);
+      g.fillStyle = `rgba(255,139,0,${(0.8 * (1 - v)).toFixed(2)})`; g.fillRect(px(-h + i * c), py(-h + (j + 1) * c), sz, sz); }
+    g.fillStyle = "#ff9218";
+    for (const v of m.viewpoints || []) { g.beginPath(); g.arc(px(v[0]), py(v[1]), 6, 0, 7); g.fill(); }
+    const pl = m.plan;
+    if (pl && pl.prev_route) { g.strokeStyle = "#6b6b6b"; g.setLineDash([10, 10]); g.lineWidth = 3; line(g, pl.prev_route, px, py); g.setLineDash([]); }
+    const trail = (S && S.trail) || [];
+    if (trail.length > 1) { g.strokeStyle = "#cfcfcf"; g.lineWidth = 3; line(g, trail, px, py); }
+    if (pl && pl.route) { g.strokeStyle = "#ff8b00"; g.setLineDash([18, 10]); g.lineWidth = 5; line(g, pl.route, px, py); g.setLineDash([]);
+      g.beginPath(); g.arc(px(pl.x), py(pl.y), 18, 0, 7); g.stroke();
+      if (pl.heading !== null && pl.heading !== undefined) { const a = pl.heading * Math.PI / 180;
+        line(g, [[pl.x, pl.y], [pl.x + 0.5 * Math.cos(a), pl.y - 0.5 * Math.sin(a)]], px, py); } }
+    g.font = "bold 26px Courier New, monospace";
+    for (const [name, o] of Object.entries(m.objects || {})) {
+      const tx = px(o.x) + 16, ty = py(o.y) - 12, w = g.measureText(name).width + 14;
+      g.fillStyle = "rgba(0,0,0,.8)"; g.fillRect(tx - 7, ty - 25, w, 34); g.strokeStyle = "#fff"; g.lineWidth = 2; g.strokeRect(tx - 7, ty - 25, w, 34);
+      g.fillStyle = "#fff"; g.fillText(name, tx, ty);
+    }
+  } else { g.fillStyle = "#bdbdbd"; g.font = "bold 34px Courier New"; g.fillText("no map yet: give the robot a task", 160, W / 2); }
+  if (S) { const r = S.robot, a = r.heading * Math.PI / 180, fx = Math.cos(a), fy = -Math.sin(a);
+    const cx = r.x + fx * .2, cy = r.y + fy * .2;
+    g.fillStyle = "rgba(255,139,0,0.15)"; g.beginPath(); g.moveTo(px(cx), py(cy));
+    for (let b = -45; b <= 45; b += 5) { const t = (r.heading + b) * Math.PI / 180; g.lineTo(px(cx + 4 * Math.cos(t)), py(cy - 4 * Math.sin(t))); }
+    g.closePath(); g.fill();
+    g.fillStyle = "#ff8b00"; g.strokeStyle = "#000"; g.lineWidth = 5; g.beginPath(); g.arc(px(r.x), py(r.y), 0.2 / (2 * VIEW) * W, 0, 7); g.fill(); g.stroke();
+    g.lineWidth = 6; line(g, [[r.x, r.y], [r.x + fx * .3, r.y + fy * .3]], px, py); }
 }
-async function send() {
-  const text = $("cmd").value.trim(); if (!text) return;
-  $("reply").textContent = "…";
-  const r = await post("/admin/instruct", {text});
-  $("reply").textContent = r.reply || r.error || "";
-  $("cmd").value = "";
+
+/* ---------- panels ---------- */
+for (let k = 0; k < 25; k++) $("bar").insertAdjacentHTML("beforeend", "<span></span>");
+const tile = (v, label, warn) => `<div class="tile${warn ? " warn" : ""}"><b>${v}</b><span>${label}</span></div>`;
+const fmt = v => typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(2)) : esc(v);
+function panels() {
+  const m = M && M.map, gt = (M && M.gt) || {}, r = S && S.robot;
+  if (m) {
+    const st = m.stats, est = Math.round(st.coverage_est * 100), real = gt.coverage !== undefined ? Math.round(gt.coverage * 100) : null;
+    $("cov").innerHTML = `${est}<small> % of ~${st.room_est_m2} m²</small>`;
+    $("gt").textContent = real === null ? "–" : `${real} %`; $("gtm").textContent = gt.floor_m2 ? `of ${gt.floor_m2} m² real floor` : "";
+    [...$("bar").children].forEach((s, k) => { s.classList.toggle("on", k < Math.round(est / 4)); s.classList.toggle("real", real !== null && k < Math.round(real / 4)); });
+    $("stats").innerHTML = tile(`${st.new_last_m2} m²`, "new in last view") + tile(`${Math.round(st.redundant * 100)} %`, "redundant observation", st.redundant > .5) +
+      tile(st.observations, "viewpoints") + tile(`${r ? r.path_length.toFixed(2) : "–"} m`, "distance travelled") +
+      tile(`${st.turns} / ${st.wasted_turns}`, "turns / wasted", st.wasted_turns > 2) + tile(st.frontier_regions, "unexplored regions") +
+      tile(`${(st.walls_seen || []).length} / 4`, "walls seen") + tile(m.plan && m.plan.gain_m2 !== undefined ? `+${m.plan.gain_m2} m²` : "–", "next view gain");
+    const pl = m.plan, ps = pl && pl.stats;
+    if (ps) {
+      $("rlen").textContent = `${ps.length_m} m`; $("rtime").textContent = `≈ ${ps.time_s} s`; $("ralgo").textContent = String(ps.planner).toUpperCase();
+      $("routesub").textContent = pl.replan ? `replanned ${pl.replan}×` : "planned path";
+      $("route").innerHTML = [["cost", ps.cost], ["turns", ps.turns], ["curves", ps.arcs], ["states", ps.expanded], ["plan time", `${ps.plan_ms} ms`],
+        ["goal", `(${pl.x.toFixed(2)}, ${pl.y.toFixed(2)})`], ["replans", pl.replan || 0], ["heading", pl.heading === null || pl.heading === undefined ? "any" : `${Math.round(pl.heading)}°`]]
+        .map(([k, v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join("");
+    } else { $("rlen").textContent = "–"; $("rtime").textContent = ""; $("ralgo").textContent = "–"; $("route").innerHTML = "<div><span>no route planned yet</span></div>"; }
+  }
+  if (r) {
+    const busy = S.task && ["Starting", "Running"].includes(S.task.status);
+    $("state").innerHTML = `<span class="${busy ? "pulse" : ""}" style="color:var(--pump2)">● ${esc(r.state)}</span>`;
+    $("robot").innerHTML = tile(r.x.toFixed(2), "x m") + tile(r.y.toFixed(2), "y m") + tile(`${r.heading.toFixed(0)}°`, "heading") +
+      tile(r.holding ? "yes" : "no", "holding") + tile(`${r.retries} / ${r.collisions}`, "retries / bumps", r.collisions > 0) +
+      tile(r.outcome || "–", "outcome", r.outcome && r.outcome !== "pass");
+    const acts = (S.actions || []).slice(-14);
+    $("exec").innerHTML = acts.map(a => {
+      const args = Object.entries(a.args || {}).filter(([k]) => k !== "speed").map(([k, v]) => `${k} ${fmt(v)}`).join(" ");
+      const res = a.result && typeof a.result === "object" ? Object.entries(a.result).filter(([k]) => k !== "interrupted").map(([k, v]) => `${k} ${fmt(v)}`).join(" ") : esc(a.result);
+      const p = a.pose_after || {};
+      return `<div class="${a.collided ? "bump" : ""}"><span class="t">#${esc(String(a.task_id).slice(-3))}</span><span class="tool">${esc(a.tool).toUpperCase()}${a.collided ? " ✕" : ""}</span>` +
+        `<em>${esc(args)} → ${res} · (${(p.x ?? 0).toFixed(2)}, ${(p.y ?? 0).toFixed(2)}) ${(p.heading ?? 0).toFixed(0)}°</em></div>`;
+    }).join("") || `<div><span class="t">–</span><span></span><em>no actions yet</em></div>`;
+  }
 }
-$("run").onclick = send;
-$("cmd").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
-$("clear").onclick = () => { $("cmd").value = ""; $("reply").textContent = ""; };
-$("pause").onclick = async () => $("reply").textContent = (await post("/admin/pause")).reply;
-$("resume").onclick = async () => $("reply").textContent = (await post("/admin/resume")).reply;
-$("stop").onclick = async () => $("reply").textContent = (await post("/admin/stop")).reply;
-$("reset").onclick = async () => { if (!confirm("Reset the whole environment? Objects and robot go back to the start.")) return;
-  const r = await post("/admin/reset", {level: "level1", seed: 0}); $("reply").textContent = r.ok ? "Environment reset." : (r.error || ""); };
-$("openall").onclick = () => post("/admin/open_folder", {});
-$("vpass").onclick = async () => $("reply").textContent = "Verdict: " + (await post("/admin/verdict", {pass: true})).outcome;
-$("vfail").onclick = async () => $("reply").textContent = "Verdict: " + (await post("/admin/verdict", {pass: false})).outcome;
-
-let live = false;
-function pump(img, name, idleMs, busyMs) {
-  const next = () => setTimeout(load, live ? busyMs : idleMs);
-  function load() { const t = new Image(); t.onload = () => { img.src = t.src; next(); }; t.onerror = next;
-    t.src = `/admin/view/${name}?t=${Date.now()}`; }
-  load();
+async function loop() {
+  try { [S, M] = await Promise.all([fetch("/admin/status").then(r => r.json()), fetch("/admin/map").then(r => r.json())]); drawMap(); panels(); } catch {}
+  setTimeout(loop, 700);
 }
-pump($("v-chase"), "chase", 1200, 180);
-pump($("v-look"), "look", 1500, 400);
-pump($("v-top"), "top", 2000, 600);
+loop();
 
-const fmt = v => v === null || v === undefined ? "–" : v;
-const esc = s => String(s).replace(/[&<>]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]));
-const args = a => Object.entries(a || {}).map(([k, v]) => `${k} ${v}`).join(", ");
-function resText(r) { if (!r || typeof r !== "object") return esc(r);
-  return esc(Object.entries(r).filter(([k, v]) => !(k === "interrupted" || (k === "collided" && !v))).map(([k, v]) => `${k}:${v}`).join(" ")); }
-
-async function poll() {
-  try {
-    const s = await (await fetch("/admin/status")).json();
-    live = s.mode === "executing";
-    $("mode").className = "pill " + s.mode; $("mode").textContent = s.mode.toUpperCase();
-    $("brain").textContent = `brain: ${s.brain}${s.brain === "local" ? " (camera-only colour planner)" : ""}${s.key_set ? "" : " · no API key"}`;
-    const e = s.engine, r = s.robot, t = s.task;
-    $("rec").textContent = e.recording ? `● recording ${e.recording.run_id} · ${e.recording.frames} frames` : "not recording";
-    $("fps").textContent = `${e.fps} fps`;
-    $("tcmd").textContent = t ? t.command : "No task yet";
-    $("tstatus").textContent = t ? t.status : ""; $("tstatus").className = "status s-" + (t ? t.status : "");
-    $("tid").textContent = fmt(t && t.id);
-    $("tact").textContent = e.action || (t && t.agent_action) || "–";
-    $("tthought").textContent = fmt(t && t.thought);
-    $("tcount").textContent = t ? t.actions : "–";
-    $("tresult").textContent = fmt(t && t.result);
-    const li = s.last_instruction; $("tlast").textContent = li ? `"${li.text}" → ${li.kind}` : "–";
-    const it = s.interrupted; $("tint").textContent = it ? `"${it.command}" (${it.status.toLowerCase()}, during ${it.action})` : "–";
-    $("r-x").textContent = r.x.toFixed(2); $("r-y").textContent = r.y.toFixed(2); $("r-h").textContent = r.heading.toFixed(0);
-    $("r-hold").textContent = r.holding ? "yes" : "no"; $("r-ret").textContent = `${r.retries} / ${r.collisions}`;
-    const sp = e.action && /speed ([\d.+]+)/.exec(e.action); $("r-spd").textContent = e.action ? (sp ? `${parseFloat(sp[1]).toFixed(2)}×` : "1.00×") : "idle";
-    $("r-state").textContent = r.state; $("r-trav").textContent = t && t.travelled !== undefined ? t.travelled.toFixed(2) : "–";
-    $("r-sim").textContent = r.sim_seconds.toFixed(1);
-    $("toutcome").textContent = r.outcome || "–";
-    $("judge").hidden = r.outcome !== "needs_manual";
-    $("actions").innerHTML = s.actions.slice(-12).reverse().map(a => `<tr><td>#${esc((a.task_id || "–").split("-").pop())}</td><td>${a.tool}</td><td>${esc(args(a.args))}</td>
-      <td class="${a.collided ? "flag-c" : a.interrupted ? "flag-i" : ""}">${resText(a.result)}${a.interrupted ? " · interrupted" : ""}</td>
-      <td>(${a.pose_after.x.toFixed(2)}, ${a.pose_after.y.toFixed(2)}) ${a.pose_after.heading.toFixed(0)}°</td></tr>`).join("");
-    $("feed").innerHTML = s.feed.slice().reverse().map(f => `<div class="${f.type}"><span class="k">${new Date(f.ts * 1000).toLocaleTimeString()}</span>${esc(f.type)} · ${esc(f.text)}</div>`).join("");
-    $("hist").innerHTML = s.history.map(h => `<tr><td class="status s-${h.status}">${h.status}</td><td>${esc(h.command)}</td><td>${h.actions} act</td></tr>`).join("");
-    $("runsdir").textContent = s.runs_dir;
-  } catch (err) { $("mode").textContent = "OFFLINE"; }
-  setTimeout(poll, 400);
-}
-poll();
-
+/* ---------- runs ---------- */
 async function runs() {
   try {
     const d = await (await fetch("/admin/runs")).json();
-    $("runs").innerHTML = d.runs.map(r => `<div class="run"><span>${esc(r.run_id)}</span><span class="muted" style="flex:1">${esc(r.command).slice(0, 60)}</span>
-      ${r.videos.map(v => `<a data-run="${r.run_id}" data-v="${v}">${v.includes("clip20") ? "20 s clip" : "video"}</a>`).join(" ")}
-      <a data-open="${r.run_id}">folder</a></div>`).join("") || '<div class="muted">No runs yet.</div>';
-    for (const a of $("runs").querySelectorAll("a[data-v]")) a.onclick = () => { const p = $("player"); p.hidden = false; p.src = `/admin/runs/${a.dataset.run}/${a.dataset.v}`; p.play(); };
-    for (const a of $("runs").querySelectorAll("a[data-open]")) a.onclick = () => post("/admin/open_folder", {run_id: a.dataset.open});
-  } catch (err) {}
-  setTimeout(runs, 3000);
+    $("rundir").textContent = `${d.runs.length} recorded`;
+    $("runs").innerHTML = d.runs.slice(0, 20).map(r => `<div><em title="${esc(r.command)}">${esc(r.command || r.run_id)}</em>` +
+      r.videos.map(v => `<button class="btn" data-run="${esc(r.run_id)}" data-v="${esc(v)}" data-c="${esc(r.command)}">${v.includes("clip20") ? "20 S" : "VIDEO"}</button>`).join("") + `</div>`).join("")
+      || "<div><em>no runs yet</em></div>";
+    document.querySelectorAll("#runs [data-v]").forEach(b => b.onclick = () => {
+      $("mtitle").textContent = (b.dataset.c || "VIDEO").toUpperCase().slice(0, 64); $("modal").hidden = false;
+      $("player").src = `/admin/runs/${b.dataset.run}/${b.dataset.v}`; $("player").play();
+    });
+  } catch {}
+  setTimeout(runs, 4000);
 }
 runs();
-
-// ------------------------------------------------------------------ map
-const COL = {u: "#1b1d22", s: "#2c3440", f: "#2f5d4a", r: "#57c38a", h: "#3d3358", o: "#e8e8ec", i: "#5a4526"};
-const CMAP = "0123456789abcdefghijklmnopqrstuvwxyz";
-const VIEW = 3.4;                                   // metres shown each side of the origin
-let lastPose = null;
-async function drawMap() {
-  try {
-    const d = await (await fetch("/admin/map")).json();
-    const st = await (await fetch("/admin/status")).json();
-    lastPose = st.robot;
-    const cv = $("map"), g = cv.getContext("2d"), W = cv.width;
-    const px = x => (x + VIEW) / (2 * VIEW) * W, py = y => (VIEW - y) / (2 * VIEW) * W;  // +y up on screen
-    g.fillStyle = "#0b0c0e"; g.fillRect(0, 0, W, W);
-    const m = d.map;
-    if (m) {
-      const n = m.n, c = m.cell, h = m.half, sz = c / (2 * VIEW) * W + 0.6;
-      for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-        const k = m.grid[j * n + i]; if (k === "u") continue;
-        g.fillStyle = COL[k]; g.fillRect(px(-h + i * c), py(-h + (j + 1) * c), sz, sz);
-      }
-      g.fillStyle = "#f2b134";
-      for (const v of m.viewpoints) { g.beginPath(); g.arc(px(v[0]), py(v[1]), 2.5, 0, 7); g.fill(); }
-      if ($("showcost").checked && m.costmap) {          // Dijkstra cost from the robot to every cell
-        for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-          const ch = m.costmap[j * n + i]; if (ch === ".") continue;
-          const v = CMAP.indexOf(ch) / (CMAP.length - 1);
-          g.fillStyle = `hsla(${200 - 200 * v}, 70%, 50%, 0.55)`; g.fillRect(px(-h + i * c), py(-h + (j + 1) * c), sz, sz);
-        }
-      }
-      const trail = st.trail || [];                    // where the robot actually drove
-      if (trail.length > 1) {
-        g.strokeStyle = "#9aa0aa"; g.lineWidth = 1.5; g.beginPath();
-        trail.forEach((p, i) => i ? g.lineTo(px(p[0]), py(p[1])) : g.moveTo(px(p[0]), py(p[1]))); g.stroke();
-      }
-      const pl = m.plan;
-      if (pl && pl.prev_route) {
-        g.strokeStyle = "#6b6f78"; g.setLineDash([3, 4]); g.lineWidth = 1.5; g.beginPath();
-        pl.prev_route.forEach((p, i) => i ? g.lineTo(px(p[0]), py(p[1])) : g.moveTo(px(p[0]), py(p[1]))); g.stroke(); g.setLineDash([]);
-      }
-      if (pl && pl.route) {
-        g.fillStyle = "#f2b134";
-        for (const p of pl.route) { g.beginPath(); g.arc(px(p[0]), py(p[1]), 3.5, 0, 7); g.fill(); }
-        g.strokeStyle = "#f2b134"; g.setLineDash([6, 5]); g.lineWidth = 2; g.beginPath();
-        pl.route.forEach((p, i) => i ? g.lineTo(px(p[0]), py(p[1])) : g.moveTo(px(p[0]), py(p[1]))); g.stroke(); g.setLineDash([]);
-        g.beginPath(); g.arc(px(pl.x), py(pl.y), 9, 0, 7); g.stroke();
-        if (pl.heading !== null && pl.heading !== undefined) { const a = pl.heading * Math.PI / 180;
-          g.beginPath(); g.moveTo(px(pl.x), py(pl.y)); g.lineTo(px(pl.x + 0.45 * Math.cos(a)), py(pl.y - 0.45 * Math.sin(a))); g.stroke(); }
-      }
-      g.font = "11px ui-monospace,Consolas,monospace";
-      for (const [name, o] of Object.entries(m.objects || {})) { g.fillStyle = "#e8e8ec"; g.fillText(name, px(o.x) + 8, py(o.y) - 6); }
-      const s = m.stats, gt = d.gt || {};
-      const rows = [["coverage (robot's estimate)", `${(s.coverage_est * 100).toFixed(0)}% of ~${s.room_est_m2} m²`],
-        ["coverage (ground truth, operator only)", gt.coverage !== undefined ? `${(gt.coverage * 100).toFixed(0)}% of ${gt.floor_m2} m²` : "–"],
-        ["new in last view", `${s.new_last_m2} m²`], ["redundant observation", `${(s.redundant * 100).toFixed(0)}%`],
-        ["viewpoints", s.observations], ["distance travelled", `${st.robot.path_length.toFixed(2)} m`],
-        ["turns / wasted turns", `${s.turns} / ${s.wasted_turns}`], ["unexplored regions left", s.frontier_regions],
-        ["walls seen", (s.walls_seen || []).join(" ") || "–"],
-        ["next view", pl && pl.gain_m2 !== undefined ? `(${pl.x.toFixed(2)}, ${pl.y.toFixed(2)}) ${pl.heading.toFixed(0)}° · +${pl.gain_m2} m² · ${pl.travel_m} m` : "–"]];
-      const ps = pl && pl.stats;
-      if (ps) rows.push(["route", `${ps.planner} · ${ps.length_m} m · ~${ps.time_s} s · cost ${ps.cost}`],
-                        ["route shape", `${ps.turns} turns, ${ps.arcs} curves · ${ps.expanded} states in ${ps.plan_ms} ms`],
-                        ["replans", pl.replan || 0]);
-      if (pl && pl.dijkstra) rows.push(["viewpoint costs", `Dijkstra: ${pl.dijkstra.expanded} states in ${pl.dijkstra.ms} ms`]);
-      $("mapstats").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
-    } else {
-      $("mapstats").innerHTML = "<dt>map</dt><dd>empty: give the robot a task (or 'Explore the room')</dd>";
-    }
-    const r = lastPose;                              // live robot pose + camera field of view
-    const a = r.heading * Math.PI / 180, fx = Math.cos(a), fy = -Math.sin(a);
-    const cx = r.x + fx * 0.2, cy = r.y + fy * 0.2;
-    g.fillStyle = "rgba(242,177,52,0.13)"; g.beginPath(); g.moveTo(px(cx), py(cy));
-    for (let b = -45; b <= 45; b += 5) { const t = (r.heading + b) * Math.PI / 180; g.lineTo(px(cx + 4 * Math.cos(t)), py(cy - 4 * Math.sin(t))); }
-    g.closePath(); g.fill();
-    g.fillStyle = "#f2b134"; g.strokeStyle = "#0b0c0e"; g.lineWidth = 2;
-    g.beginPath(); g.arc(px(r.x), py(r.y), 0.2 / (2 * VIEW) * W, 0, 7); g.fill(); g.stroke();
-    g.beginPath(); g.moveTo(px(r.x), py(r.y)); g.lineTo(px(r.x + fx * 0.32), py(r.y + fy * 0.32)); g.stroke();
-  } catch (err) {}
-  setTimeout(drawMap, 600);
-}
-drawMap();
+$("mclose").onclick = () => { $("player").pause(); $("modal").hidden = true; };
+addEventListener("keydown", e => { if (e.key === "Escape") $("mclose").onclick(); });
 </script>
 </body>
 </html>

@@ -6,6 +6,7 @@ turns it into the MP4. Frames are written by a background thread so the main loo
 never waits on the disk.
 """
 import json
+import os
 import queue
 import threading
 from pathlib import Path
@@ -14,7 +15,8 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 CLIP_FPS = 30
-CLIP_W, CLIP_H = 1440, 1080
+LOWMEM = os.environ.get("FETCH_LOWMEM", "") in ("1", "true", "yes")   # small servers: 960x720 (still 720p), bounded queue
+CLIP_W, CLIP_H = (960, 720) if LOWMEM else (1440, 1080)
 
 
 class Recorder:
@@ -24,7 +26,7 @@ class Recorder:
         self.rec = None
         self.last_step = None
         self.pending = None                       # clip frame waiting for this frame's render pass
-        self.q = queue.Queue()
+        self.q = queue.Queue(maxsize=6 if LOWMEM else 0)   # bounded: the main loop waits rather than piling up frames
         threading.Thread(target=self._writer, daemon=True).start()
 
     def _writer(self):

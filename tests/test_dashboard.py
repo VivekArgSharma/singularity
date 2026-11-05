@@ -93,9 +93,9 @@ def main():
             check(f"asset {asset} served", code == 200 and "image" in ctype)
         code, ctype, html = get(ADMIN, "/dashboard/engineering.html")
         page = html.decode()
-        for el in ('id="cmd"', 'id="run"', 'id="clear"', 'id="pause"', 'id="resume"', 'id="stop"', 'id="reset"',
-                   'id="v-chase"', 'id="v-look"', 'id="v-top"', 'id="player"', 'id="openall"', 'id="tint"'):
-            check(f"engineering dashboard has {el}", el in page)
+        for el in ('id="map"', 'id="cov"', 'id="stats"', 'id="route"', 'id="robot"', 'id="exec"', 'id="runs"', 'id="player"',
+                   "/admin/map", "/admin/status", "/admin/runs", "/dashboard/console.html"):
+            check(f"engineering page has {el}", el in page)
         code, _, body = get(ADMIN, "/admin/status")
         s = json.loads(body)
         for k in ("mode", "brain", "task", "last_instruction", "interrupted", "history", "feed", "robot", "engine", "actions"):

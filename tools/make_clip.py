@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 FPS = 30
-SIZE = (1440, 1080)
+SIZE = (960, 720) if os.environ.get("FETCH_LOWMEM", "") in ("1", "true", "yes") else (1440, 1080)
 MIN_FRAMES = 10 * FPS
 MAX_FRAMES = 20 * FPS
 FONT_PATH = Path(r"C:\Windows\Fonts\arial.ttf")
@@ -118,7 +119,8 @@ def make_clip(run_id: str, root: Path | None = None, speedup: float = 1.0) -> in
             pixelformat="yuv420p",
             macro_block_size=1,
             ffmpeg_log_level="error",
-            output_params=["-an"],
+            output_params=(["-an", "-threads", "2", "-preset", "veryfast", "-x264-params", "rc-lookahead=10"]
+                           if os.environ.get("FETCH_LOWMEM", "") in ("1", "true", "yes") else ["-an"]),   # small servers
         ) as writer:
             for index, path in enumerate(timeline):
                 frame = load_frame(path)

@@ -524,7 +524,7 @@ def main():
     ap.add_argument("--level", default="level1")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--port", type=int, default=8080)
-    ap.add_argument("--admin-port", type=int, default=8081)
+    ap.add_argument("--admin-port", type=int, default=int(os.environ.get("PORT", "8081")))   # hosts set $PORT
     ap.add_argument("--debug-frames", action="store_true",
                     help="also save chase and top-down frames for every clip frame")
     ap.add_argument("--sandbox", action="store_true",
@@ -554,8 +554,8 @@ def main():
     eng = Engine(headless=a.headless, level=a.level, seed=a.seed, debug_frames=a.debug_frames, sandbox=a.sandbox)
     ctl = Controller(eng, agent_port=a.port, brain=a.brain)
     eng.controller = ctl
-    serve(make_agent_app(eng), a.port)
-    serve(make_admin_app(eng, ctl), a.admin_port)
+    serve(make_agent_app(eng), a.port)                        # agent API: always this machine only
+    serve(make_admin_app(eng, ctl), a.admin_port, host=os.environ.get("CONSOLE_BIND", "127.0.0.1"))
     print(f"engine ready: agent http://127.0.0.1:{a.port}  dashboard http://127.0.0.1:{a.admin_port}/"
           f"  (brain: {ctl.brain})", flush=True)
     eng.base.run()

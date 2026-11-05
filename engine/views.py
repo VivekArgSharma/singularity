@@ -12,7 +12,9 @@ from panda3d.core import (AmbientLight, BitMask32, Camera, DirectionalLight,
 import meshes
 
 LOOK_W, LOOK_H = 640, 480
-CLIP_W, CLIP_H = 1440, 1080
+LOWMEM = os.environ.get("FETCH_LOWMEM", "") in ("1", "true", "yes")
+CLIP_W, CLIP_H = (960, 720) if LOWMEM else (1440, 1080)
+SIDE_W, SIDE_H = (640, 480) if LOWMEM else (960, 720)          # people-only chase and top-down views
 H_FOV = 90.0
 V_FOV = math.degrees(2 * math.atan(math.tan(math.radians(H_FOV / 2)) * 3 / 4))  # 73.74
 CAM_H = float(os.environ.get("FETCH_CAM_H", "0.5"))      # problem statement: 0.5 m (other values are experiments only)
@@ -75,7 +77,7 @@ class Views:
         fbp.setRgbColor(True)
         fbp.setRgbaBits(8, 8, 8, 8)
         fbp.setDepthBits(24)
-        fbp.setMultisamples(4)
+        fbp.setMultisamples(0 if LOWMEM else 4)
         tex = Texture(name)
         buf = b.win.makeTextureBuffer(name, w, h, tex, True, fbp)
         if buf is None:  # driver without multisampled buffers
@@ -100,11 +102,11 @@ class Views:
         chase = PerspectiveLens()
         chase.setFov(70, 54.5)
         chase.setNearFar(0.05, 40)
-        self._buffer("chase", 960, 720, chase, MASK_OVERVIEW, self.chase_mount)
+        self._buffer("chase", SIDE_W, SIDE_H, chase, MASK_OVERVIEW, self.chase_mount)
         top = OrthographicLens()
         top.setFilmSize(8.0, 6.0)
         top.setNearFar(0.5, 30)
-        cam = self._buffer("top", 960, 720, top, MASK_OVERVIEW, self.top_mount)
+        cam = self._buffer("top", SIDE_W, SIDE_H, top, MASK_OVERVIEW, self.top_mount)
         cam.setPos(0, 0, 12)
         cam.setHpr(0, -90, 0)
 

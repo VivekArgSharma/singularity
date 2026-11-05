@@ -1,0 +1,16 @@
+.git
+.venv
+.env
+__pycache__
+*.pyc
+outputs
+clips
+logs
+results
+private
+design-assets
+design.pen
+*.npz
+.claude
+CLAUDE.md
+.taste-skill
