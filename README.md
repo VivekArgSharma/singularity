@@ -33,7 +33,7 @@ Built-in defaults:
 - spend guard: $35 total
 - hard stop: 60 steps per run
 
-They can be overridden as environment variables (`AGENT_MODEL`, `AGENT_BUDGET_USD`, `AGENT_MAX_STEPS`). First Claude test (a few cents on Haiku 5.5): `.venv\Scripts\python tools\claude_smoke.py`.
+They can be overridden as environment variables (`AGENT_MODEL`, `AGENT_BUDGET_USD`, `AGENT_MAX_STEPS`, and `AGENT_EFFORT`, default `medium`). First Claude test (a few cents on Haiku 5.5): `.venv\Scripts\python tools\claude_smoke.py`.
 
 Ports: 8080 = agent API (camera, state, depth, scan, actions); 8081 = operator API and console (never given to the agent).
 

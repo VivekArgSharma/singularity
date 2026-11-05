@@ -250,6 +250,8 @@ class Engine:
     def _tick(self, task):
         self.perf.tick()
         self.tick_n += 1
+        if not self.headless and self.tick_n % 30 == 0:
+            self._window_visibility()
         with self.perf.section("capture"):
             self._collect_captures()
         # observations and operator reads run at once, even while an action is moving
@@ -340,6 +342,28 @@ class Engine:
         if reset:
             self.perf.reset()
         return out
+
+    def _window_visibility(self):
+        """Windows slows a window nobody can see (minimized, or covered by the window in front) to
+        about 10 fps, and every camera view and the recording are drawn in the same frame. While the
+        operator window is hidden it is not drawn at all; the offscreen views keep full speed."""
+        hidden = self.base.win.getProperties().getMinimized()
+        if not hidden and sys.platform == "win32":
+            try:
+                import ctypes
+                import ctypes.wintypes as wt
+                u32 = ctypes.windll.user32
+                me = self.base.win.getWindowHandle().getIntHandle()
+                front = u32.GetForegroundWindow()
+                if front and front != me and not u32.IsChild(me, front):
+                    a, f = wt.RECT(), wt.RECT()
+                    u32.GetWindowRect(me, ctypes.byref(a))
+                    u32.GetWindowRect(front, ctypes.byref(f))
+                    hidden = f.left <= a.left and f.top <= a.top and f.right >= a.right and f.bottom >= a.bottom
+            except Exception:
+                hidden = False
+        if self.base.win.isActive() == hidden:
+            self.base.win.setActive(not hidden)
 
     def _substeps(self):
         """Window mode: simulation time follows wall time. Every step is still exactly 1/60 s

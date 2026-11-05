@@ -40,6 +40,7 @@ class FakeModel:
     def __init__(self, script):
         self.script, self.requests = list(script), []
         self.messages = self
+        self.beta = self              # the agent calls client.beta.messages.create
 
     def create(self, **kw):
         self.requests.append(kw)
@@ -109,6 +110,9 @@ def main():
                                                          ("turn", (10, 1.0))], robot.calls)
     req = b.client.requests[-1]
     check("one tool per step (parallel tool use off)", req["tool_choice"] == {"type": "auto", "disable_parallel_tool_use": True})
+    check("trimmed images do not break the request: drop_block with its beta header",
+          req["thinking"] == {"type": "adaptive", "block_binding": {"prefix_mismatch_behavior": "drop_block"}}
+          and "thinking-binding-controls-2026-08-01" in req["betas"], (req.get("thinking"), req.get("betas")))
     import re
     text = (req["system"][0]["text"] + " " + json.dumps(claude_brain.TOOLS)).lower()
     leak = re.findall(r"\b(red|blue|yellow|orange|green|grey|cube|sphere|cylinder|cone|can|zone|square|center|"

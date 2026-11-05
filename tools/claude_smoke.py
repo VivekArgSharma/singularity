@@ -65,7 +65,7 @@ def main():
         print(f"\nresult: {h['status']} · outcome {s['robot']['outcome']} · {h.get('result')}")
         b = ROOT / "outputs" / "budget.json"
         if b.exists():
-            print("spend so far:", json.loads(b.read_text()).get("total_usd"))
+            print("spend so far:", json.loads(b.read_text()).get("spent_usd"))
         print("run folder:", d)
     finally:
         kill_tree(eng)

@@ -15,6 +15,11 @@ from budget import Budget
 MODEL = os.environ.get("AGENT_MODEL", "claude-sonnet-5-5")
 MAX_STEPS = int(os.environ.get("AGENT_MAX_STEPS", "60"))
 KEEP_IMAGES = 1            # the problem statement: only the latest camera image is sent
+EFFORT = os.environ.get("AGENT_EFFORT", "medium")   # one small action per step: medium keeps each step quick
+# Replacing older images edits earlier turns, which invalidates the thinking blocks that came after them.
+# drop_block tells the API to leave those blocks out instead of rejecting the request.
+BETAS = ["thinking-binding-controls-2026-08-01"]
+THINKING_CONFIG = {"type": "adaptive", "block_binding": {"prefix_mismatch_behavior": "drop_block"}}
 
 SYSTEM = """You control a small wheeled robot in a simulation. You see through one camera on the robot's front (90 degree horizontal field of view, 0.5 m high, tilted 10 degrees down). You also get the robot's state and a depth reading: the distance in metres from the robot's front to the first thing straight ahead, or null.
 
@@ -105,8 +110,9 @@ class ClaudeBrain:
         for _ in range(MAX_STEPS):
             self._trim(messages)
             self.budget.check()
-            resp = self.client.messages.create(
-                model=MODEL, max_tokens=1024, system=system, tools=TOOLS, messages=messages,
+            resp = self.client.beta.messages.create(
+                model=MODEL, max_tokens=8000, system=system, tools=TOOLS, messages=messages,
+                betas=BETAS, thinking=THINKING_CONFIG, output_config={"effort": EFFORT},
                 tool_choice={"type": "auto", "disable_parallel_tool_use": True})
             if getattr(resp, "usage", None) is not None:
                 cost = self.budget.add(MODEL, resp.usage)
