@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+results/
+clips/
+logs/
+private/
+outputs/
+design-assets/
+design.pen
+_frontend_in/
+*.npz

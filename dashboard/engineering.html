@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fetch Robot Operator</title>
+<style>
+:root{
+  --bg:#101114; --panel:#16171b; --panel2:#1b1d22; --line:#26282e; --ink:#e8e8ec; --muted:#8d9099;
+  --dim:#5f626b; --accent:#f2b134; --ok:#57c38a; --warn:#f2b134; --bad:#e2605a; --int:#a58bf0;
+  --mono:ui-monospace,"Cascadia Mono","Consolas",monospace; --sans:"Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--sans)}
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--line)}
+header h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.2px}
+.pill{font:600 11px var(--mono);letter-spacing:.8px;padding:4px 9px;border-radius:3px;border:1px solid var(--line);color:var(--muted)}
+.pill.executing{color:var(--ok);border-color:#2c5a43}.pill.paused{color:var(--warn);border-color:#6a5222}
+.pill.waiting{color:var(--muted)}
+.meta{font:12px var(--mono);color:var(--muted)}
+.spacer{flex:1}
+main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(360px,1fr);gap:16px;padding:16px 20px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:6px}
+section>h2{margin:0;padding:10px 14px;font:600 11px var(--mono);letter-spacing:1px;color:var(--muted);
+  text-transform:uppercase;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
+.body{padding:12px 14px}
+.views{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:10px;padding:10px}
+.views figure{margin:0;position:relative;background:#0b0c0e;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.views img{display:block;width:100%;height:auto}
+.views figcaption{position:absolute;left:8px;top:6px;font:11px var(--mono);color:#cfd0d6;background:rgba(10,11,13,.7);padding:2px 6px;border-radius:2px}
+.side{display:flex;flex-direction:column;gap:10px}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+textarea{width:100%;min-height:64px;resize:vertical;background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+  border-radius:4px;padding:10px;font:15px var(--sans)}
+textarea:focus{outline:1px solid var(--accent);border-color:var(--accent)}
+[hidden]{display:none !important}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{font:600 13px var(--sans);padding:8px 14px;border-radius:4px;border:1px solid var(--line);background:var(--panel2);color:var(--ink);cursor:pointer}
+button:hover{border-color:#3a3d45}
+button.primary{background:var(--accent);border-color:var(--accent);color:#17130a}
+button.danger{color:var(--bad)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{font:12px var(--sans);padding:4px 9px;border:1px solid var(--line);border-radius:12px;color:var(--muted);cursor:pointer;background:none}
+.chip:hover{color:var(--ink)}
+.reply{margin-top:10px;font:13px var(--sans);color:var(--ink);min-height:20px}
+dl{display:grid;grid-template-columns:130px minmax(0,1fr);gap:6px 12px;margin:0}
+dt{color:var(--muted);font:12px var(--mono);padding-top:1px}
+dd{margin:0;font:13px var(--mono);overflow-wrap:anywhere}
+.big{font:500 17px var(--sans);line-height:1.35}
+.status{font:600 12px var(--mono)}
+.s-Running,.s-Completed{color:var(--ok)}.s-Paused,.s-Starting{color:var(--warn)}
+.s-Failed{color:var(--bad)}.s-Interrupted,.s-Refined,.s-Stopped{color:var(--int)}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line)}
+.stat{background:var(--panel);padding:10px 12px}
+.stat b{display:block;font:500 18px var(--mono)}
+.stat span{font:11px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+table{width:100%;border-collapse:collapse;font:12px var(--mono)}
+td,th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500}
+td.flag-c{color:var(--bad)}td.flag-i{color:var(--int)}
+.feed{max-height:220px;overflow:auto;font:12px var(--mono)}
+.feed div{padding:3px 0;border-bottom:1px dashed #22242a}
+.feed .k{color:var(--dim);display:inline-block;width:78px}
+.feed .operator{color:var(--accent)}.feed .reply,.feed .system{color:var(--ok)}
+.runs{max-height:260px;overflow:auto}
+.run{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font:12px var(--mono)}
+.run a{color:var(--accent);cursor:pointer;text-decoration:none}
+video{width:100%;border-radius:4px;background:#000;display:block;margin-top:8px}
+video[hidden]{display:none}
+.muted{color:var(--muted)}
+.wide{grid-column:1 / -1}
+.mapwrap{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:16px;padding:12px 14px;align-items:start}
+#map{width:100%;height:auto;background:#0b0c0e;border:1px solid var(--line);border-radius:4px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font:12px var(--sans);color:var(--muted)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+@media (max-width:1100px){main{grid-template-columns:1fr}.views{grid-template-columns:1fr}.mapwrap{grid-template-columns:1fr}}
+@media (max-width:560px){main{padding:12px 16px}dl{grid-template-columns:110px 1fr}.grid3{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Fetch Robot — Operator</h1>
+  <span id="mode" class="pill waiting">WAITING</span>
+  <span class="meta" id="brain">brain: –</span>
+  <span class="spacer"></span>
+  <span class="meta" id="rec">not recording</span>
+  <span class="meta" id="fps"></span>
+</header>
+<main>
+  <div class="col">
+    <section>
+      <h2>Live <span class="muted" style="text-transform:none;letter-spacing:0">people-only views + what the robot sees</span></h2>
+      <div class="views">
+        <figure><img id="v-chase" alt="Chase camera view of the robot"><figcaption>chase — people only</figcaption></figure>
+        <div class="side">
+          <figure><img id="v-look" alt="Robot camera, 640 by 480"><figcaption>robot camera 640×480</figcaption></figure>
+          <figure><img id="v-top" alt="Top-down view"><figcaption>top-down</figcaption></figure>
+        </div>
+      </div>
+    </section>
+    <section>
+      <h2>Robot's map <span class="muted" style="text-transform:none;letter-spacing:0">built only from its own camera + range scan</span></h2>
+      <div class="mapwrap">
+        <canvas id="map" width="520" height="520" aria-label="Top-down coverage map"></canvas>
+        <div>
+          <div class="legend">
+            <span><i style="background:#1b1d22;border:1px solid #33363d"></i>unknown</span>
+            <span><i style="background:#2c3440"></i>free (range), not seen</span>
+            <span><i style="background:#2f5d4a"></i>seen by camera</span>
+            <span><i style="background:#57c38a"></i>seen just now</span>
+            <span><i style="background:#3d3358"></i>occluded</span>
+            <span><i style="background:#e8e8ec"></i>occupied</span>
+            <span><i style="background:#5a4526"></i>too close for the body (inflated)</span>
+            <span><i style="background:#9aa0aa"></i>driven path</span>
+            <span><i style="background:#6b6f78"></i>previous route (replanned)</span>
+            <label style="cursor:pointer"><input type="checkbox" id="showcost"> Dijkstra time-to-reach map</label>
+            <span><i style="background:#f2b134"></i>viewpoints · plan</span>
+          </div>
+          <dl id="mapstats" style="margin-top:12px"></dl>
+        </div>
+      </div>
+    </section>
+    <section>
+      <h2>Execution</h2>
+      <div class="body">
+        <table><thead><tr><th>task</th><th>tool</th><th>args</th><th>result</th><th>pose after</th></tr></thead>
+        <tbody id="actions"></tbody></table>
+      </div>
+    </section>
+    <section>
+      <h2>Agent feed</h2>
+      <div class="body feed" id="feed"></div>
+    </section>
+  </div>
+  <div class="col">
+    <section>
+      <h2>Instruction</h2>
+      <div class="body">
+        <textarea id="cmd" placeholder="Type an instruction. A new one replaces the current task; questions are answered without stopping it."></textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="primary" id="run">Run</button>
+          <button id="clear">Clear</button>
+          <span class="spacer"></span>
+          <button id="pause">Pause</button>
+          <button id="resume">Resume</button>
+          <button id="stop" class="danger">Stop action</button>
+          <button id="reset" class="danger">Reset environment</button>
+        </div>
+        <div class="chips" id="chips"></div>
+        <div class="reply" id="reply"></div>
+      </div>
+    </section>
+    <section>
+      <h2>Active task <span id="tstatus" class="status"></span></h2>
+      <div class="body">
+        <div class="big" id="tcmd">No task yet</div>
+        <dl style="margin-top:10px">
+          <dt>task id</dt><dd id="tid">–</dd>
+          <dt>current action</dt><dd id="tact">–</dd>
+          <dt>agent says</dt><dd id="tthought">–</dd>
+          <dt>actions</dt><dd id="tcount">–</dd>
+          <dt>result</dt><dd id="tresult">–</dd>
+          <dt>last received</dt><dd id="tlast">–</dd>
+          <dt>interrupted</dt><dd id="tint">–</dd>
+          <dt>outcome</dt><dd id="toutcome">–</dd>
+        </dl>
+        <div class="row" id="judge" hidden style="margin-top:10px">
+          <span class="meta">The grader cannot decide this command. Judge it:</span>
+          <button id="vpass">Mark pass</button><button id="vfail" class="danger">Mark fail</button>
+        </div>
+      </div>
+    </section>
+    <section>
+      <h2>Robot</h2>
+      <div class="grid3">
+        <div class="stat"><b id="r-x">–</b><span>x m</span></div>
+        <div class="stat"><b id="r-y">–</b><span>y m</span></div>
+        <div class="stat"><b id="r-h">–</b><span>heading °</span></div>
+        <div class="stat"><b id="r-hold">–</b><span>holding</span></div>
+        <div class="stat"><b id="r-ret">–</b><span>retries / collisions</span></div>
+        <div class="stat"><b id="r-spd">–</b><span>speed</span></div>
+        <div class="stat"><b id="r-state">–</b><span>engine state</span></div>
+        <div class="stat"><b id="r-trav">–</b><span>travelled (task) m</span></div>
+        <div class="stat"><b id="r-sim">–</b><span>sim time s</span></div>
+      </div>
+    </section>
+    <section>
+      <h2>Outputs <span class="spacer"></span><button id="openall" style="padding:4px 10px;font-size:12px">Open output folder</button></h2>
+      <div class="body">
+        <div class="meta" id="runsdir"></div>
+        <video id="player" controls muted hidden></video>
+        <div class="runs" id="runs"></div>
+      </div>
+    </section>
+    <section>
+      <h2>History</h2>
+      <div class="body"><table><tbody id="hist"></tbody></table></div>
+    </section>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const EXAMPLES = ["Bring the red cube to the green square.", "Go and pick up the blue sphere instead.",
+  "Circle around the yellow cylinder twice.", "Move behind the orange cone.", "Approach the red sphere slowly.",
+  "Move to the green zone.", "Rotate 180 degrees.", "Move back 1 m.", "What are you doing?", "How far have you travelled?",
+  "Explore the entire room and map everything you can see.", "Find the orange cone.", "Inspect the red sphere."];
+for (const e of EXAMPLES) { const b = document.createElement("button"); b.className = "chip"; b.textContent = e;
+  b.onclick = () => { $("cmd").value = e; $("cmd").focus(); }; $("chips").appendChild(b); }
+
+async function post(path, body) {
+  const r = await fetch(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body || {})});
+  return r.json();
+}
+async function send() {
+  const text = $("cmd").value.trim(); if (!text) return;
+  $("reply").textContent = "…";
+  const r = await post("/admin/instruct", {text});
+  $("reply").textContent = r.reply || r.error || "";
+  $("cmd").value = "";
+}
+$("run").onclick = send;
+$("cmd").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+$("clear").onclick = () => { $("cmd").value = ""; $("reply").textContent = ""; };
+$("pause").onclick = async () => $("reply").textContent = (await post("/admin/pause")).reply;
+$("resume").onclick = async () => $("reply").textContent = (await post("/admin/resume")).reply;
+$("stop").onclick = async () => $("reply").textContent = (await post("/admin/stop")).reply;
+$("reset").onclick = async () => { if (!confirm("Reset the whole environment? Objects and robot go back to the start.")) return;
+  const r = await post("/admin/reset", {level: "level1", seed: 0}); $("reply").textContent = r.ok ? "Environment reset." : (r.error || ""); };
+$("openall").onclick = () => post("/admin/open_folder", {});
+$("vpass").onclick = async () => $("reply").textContent = "Verdict: " + (await post("/admin/verdict", {pass: true})).outcome;
+$("vfail").onclick = async () => $("reply").textContent = "Verdict: " + (await post("/admin/verdict", {pass: false})).outcome;
+
+let live = false;
+function pump(img, name, idleMs, busyMs) {
+  const next = () => setTimeout(load, live ? busyMs : idleMs);
+  function load() { const t = new Image(); t.onload = () => { img.src = t.src; next(); }; t.onerror = next;
+    t.src = `/admin/view/${name}?t=${Date.now()}`; }
+  load();
+}
+pump($("v-chase"), "chase", 1200, 180);
+pump($("v-look"), "look", 1500, 400);
+pump($("v-top"), "top", 2000, 600);
+
+const fmt = v => v === null || v === undefined ? "–" : v;
+const esc = s => String(s).replace(/[&<>]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]));
+const args = a => Object.entries(a || {}).map(([k, v]) => `${k} ${v}`).join(", ");
+function resText(r) { if (!r || typeof r !== "object") return esc(r);
+  return esc(Object.entries(r).filter(([k, v]) => !(k === "interrupted" || (k === "collided" && !v))).map(([k, v]) => `${k}:${v}`).join(" ")); }
+
+async function poll() {
+  try {
+    const s = await (await fetch("/admin/status")).json();
+    live = s.mode === "executing";
+    $("mode").className = "pill " + s.mode; $("mode").textContent = s.mode.toUpperCase();
+    $("brain").textContent = `brain: ${s.brain}${s.brain === "local" ? " (camera-only colour planner)" : ""}${s.key_set ? "" : " · no API key"}`;
+    const e = s.engine, r = s.robot, t = s.task;
+    $("rec").textContent = e.recording ? `● recording ${e.recording.run_id} · ${e.recording.frames} frames` : "not recording";
+    $("fps").textContent = `${e.fps} fps`;
+    $("tcmd").textContent = t ? t.command : "No task yet";
+    $("tstatus").textContent = t ? t.status : ""; $("tstatus").className = "status s-" + (t ? t.status : "");
+    $("tid").textContent = fmt(t && t.id);
+    $("tact").textContent = e.action || (t && t.agent_action) || "–";
+    $("tthought").textContent = fmt(t && t.thought);
+    $("tcount").textContent = t ? t.actions : "–";
+    $("tresult").textContent = fmt(t && t.result);
+    const li = s.last_instruction; $("tlast").textContent = li ? `"${li.text}" → ${li.kind}` : "–";
+    const it = s.interrupted; $("tint").textContent = it ? `"${it.command}" (${it.status.toLowerCase()}, during ${it.action})` : "–";
+    $("r-x").textContent = r.x.toFixed(2); $("r-y").textContent = r.y.toFixed(2); $("r-h").textContent = r.heading.toFixed(0);
+    $("r-hold").textContent = r.holding ? "yes" : "no"; $("r-ret").textContent = `${r.retries} / ${r.collisions}`;
+    const sp = e.action && /speed ([\d.+]+)/.exec(e.action); $("r-spd").textContent = e.action ? (sp ? `${parseFloat(sp[1]).toFixed(2)}×` : "1.00×") : "idle";
+    $("r-state").textContent = r.state; $("r-trav").textContent = t && t.travelled !== undefined ? t.travelled.toFixed(2) : "–";
+    $("r-sim").textContent = r.sim_seconds.toFixed(1);
+    $("toutcome").textContent = r.outcome || "–";
+    $("judge").hidden = r.outcome !== "needs_manual";
+    $("actions").innerHTML = s.actions.slice(-12).reverse().map(a => `<tr><td>#${esc((a.task_id || "–").split("-").pop())}</td><td>${a.tool}</td><td>${esc(args(a.args))}</td>
+      <td class="${a.collided ? "flag-c" : a.interrupted ? "flag-i" : ""}">${resText(a.result)}${a.interrupted ? " · interrupted" : ""}</td>
+      <td>(${a.pose_after.x.toFixed(2)}, ${a.pose_after.y.toFixed(2)}) ${a.pose_after.heading.toFixed(0)}°</td></tr>`).join("");
+    $("feed").innerHTML = s.feed.slice().reverse().map(f => `<div class="${f.type}"><span class="k">${new Date(f.ts * 1000).toLocaleTimeString()}</span>${esc(f.type)} · ${esc(f.text)}</div>`).join("");
+    $("hist").innerHTML = s.history.map(h => `<tr><td class="status s-${h.status}">${h.status}</td><td>${esc(h.command)}</td><td>${h.actions} act</td></tr>`).join("");
+    $("runsdir").textContent = s.runs_dir;
+  } catch (err) { $("mode").textContent = "OFFLINE"; }
+  setTimeout(poll, 400);
+}
+poll();
+
+async function runs() {
+  try {
+    const d = await (await fetch("/admin/runs")).json();
+    $("runs").innerHTML = d.runs.map(r => `<div class="run"><span>${esc(r.run_id)}</span><span class="muted" style="flex:1">${esc(r.command).slice(0, 60)}</span>
+      ${r.videos.map(v => `<a data-run="${r.run_id}" data-v="${v}">${v.includes("clip20") ? "20 s clip" : "video"}</a>`).join(" ")}
+      <a data-open="${r.run_id}">folder</a></div>`).join("") || '<div class="muted">No runs yet.</div>';
+    for (const a of $("runs").querySelectorAll("a[data-v]")) a.onclick = () => { const p = $("player"); p.hidden = false; p.src = `/admin/runs/${a.dataset.run}/${a.dataset.v}`; p.play(); };
+    for (const a of $("runs").querySelectorAll("a[data-open]")) a.onclick = () => post("/admin/open_folder", {run_id: a.dataset.open});
+  } catch (err) {}
+  setTimeout(runs, 3000);
+}
+runs();
+
+// ------------------------------------------------------------------ map
+const COL = {u: "#1b1d22", s: "#2c3440", f: "#2f5d4a", r: "#57c38a", h: "#3d3358", o: "#e8e8ec", i: "#5a4526"};
+const CMAP = "0123456789abcdefghijklmnopqrstuvwxyz";
+const VIEW = 3.4;                                   // metres shown each side of the origin
+let lastPose = null;
+async function drawMap() {
+  try {
+    const d = await (await fetch("/admin/map")).json();
+    const st = await (await fetch("/admin/status")).json();
+    lastPose = st.robot;
+    const cv = $("map"), g = cv.getContext("2d"), W = cv.width;
+    const px = x => (x + VIEW) / (2 * VIEW) * W, py = y => (VIEW - y) / (2 * VIEW) * W;  // +y up on screen
+    g.fillStyle = "#0b0c0e"; g.fillRect(0, 0, W, W);
+    const m = d.map;
+    if (m) {
+      const n = m.n, c = m.cell, h = m.half, sz = c / (2 * VIEW) * W + 0.6;
+      for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+        const k = m.grid[j * n + i]; if (k === "u") continue;
+        g.fillStyle = COL[k]; g.fillRect(px(-h + i * c), py(-h + (j + 1) * c), sz, sz);
+      }
+      g.fillStyle = "#f2b134";
+      for (const v of m.viewpoints) { g.beginPath(); g.arc(px(v[0]), py(v[1]), 2.5, 0, 7); g.fill(); }
+      if ($("showcost").checked && m.costmap) {          // Dijkstra cost from the robot to every cell
+        for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+          const ch = m.costmap[j * n + i]; if (ch === ".") continue;
+          const v = CMAP.indexOf(ch) / (CMAP.length - 1);
+          g.fillStyle = `hsla(${200 - 200 * v}, 70%, 50%, 0.55)`; g.fillRect(px(-h + i * c), py(-h + (j + 1) * c), sz, sz);
+        }
+      }
+      const trail = st.trail || [];                    // where the robot actually drove
+      if (trail.length > 1) {
+        g.strokeStyle = "#9aa0aa"; g.lineWidth = 1.5; g.beginPath();
+        trail.forEach((p, i) => i ? g.lineTo(px(p[0]), py(p[1])) : g.moveTo(px(p[0]), py(p[1]))); g.stroke();
+      }
+      const pl = m.plan;
+      if (pl && pl.prev_route) {
+        g.strokeStyle = "#6b6f78"; g.setLineDash([3, 4]); g.lineWidth = 1.5; g.beginPath();
+        pl.prev_route.forEach((p, i) => i ? g.lineTo(px(p[0]), py(p[1])) : g.moveTo(px(p[0]), py(p[1]))); g.stroke(); g.setLineDash([]);
+      }
+      if (pl && pl.route) {
+        g.fillStyle = "#f2b134";
+        for (const p of pl.route) { g.beginPath(); g.arc(px(p[0]), py(p[1]), 3.5, 0, 7); g.fill(); }
+        g.strokeStyle = "#f2b134"; g.setLineDash([6, 5]); g.lineWidth = 2; g.beginPath();
+        pl.route.forEach((p, i) => i ? g.lineTo(px(p[0]), py(p[1])) : g.moveTo(px(p[0]), py(p[1]))); g.stroke(); g.setLineDash([]);
+        g.beginPath(); g.arc(px(pl.x), py(pl.y), 9, 0, 7); g.stroke();
+        if (pl.heading !== null && pl.heading !== undefined) { const a = pl.heading * Math.PI / 180;
+          g.beginPath(); g.moveTo(px(pl.x), py(pl.y)); g.lineTo(px(pl.x + 0.45 * Math.cos(a)), py(pl.y - 0.45 * Math.sin(a))); g.stroke(); }
+      }
+      g.font = "11px ui-monospace,Consolas,monospace";
+      for (const [name, o] of Object.entries(m.objects || {})) { g.fillStyle = "#e8e8ec"; g.fillText(name, px(o.x) + 8, py(o.y) - 6); }
+      const s = m.stats, gt = d.gt || {};
+      const rows = [["coverage (robot's estimate)", `${(s.coverage_est * 100).toFixed(0)}% of ~${s.room_est_m2} m²`],
+        ["coverage (ground truth, operator only)", gt.coverage !== undefined ? `${(gt.coverage * 100).toFixed(0)}% of ${gt.floor_m2} m²` : "–"],
+        ["new in last view", `${s.new_last_m2} m²`], ["redundant observation", `${(s.redundant * 100).toFixed(0)}%`],
+        ["viewpoints", s.observations], ["distance travelled", `${st.robot.path_length.toFixed(2)} m`],
+        ["turns / wasted turns", `${s.turns} / ${s.wasted_turns}`], ["unexplored regions left", s.frontier_regions],
+        ["walls seen", (s.walls_seen || []).join(" ") || "–"],
+        ["next view", pl && pl.gain_m2 !== undefined ? `(${pl.x.toFixed(2)}, ${pl.y.toFixed(2)}) ${pl.heading.toFixed(0)}° · +${pl.gain_m2} m² · ${pl.travel_m} m` : "–"]];
+      const ps = pl && pl.stats;
+      if (ps) rows.push(["route", `${ps.planner} · ${ps.length_m} m · ~${ps.time_s} s · cost ${ps.cost}`],
+                        ["route shape", `${ps.turns} turns, ${ps.arcs} curves · ${ps.expanded} states in ${ps.plan_ms} ms`],
+                        ["replans", pl.replan || 0]);
+      if (pl && pl.dijkstra) rows.push(["viewpoint costs", `Dijkstra: ${pl.dijkstra.expanded} states in ${pl.dijkstra.ms} ms`]);
+      $("mapstats").innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+    } else {
+      $("mapstats").innerHTML = "<dt>map</dt><dd>empty: give the robot a task (or 'Explore the room')</dd>";
+    }
+    const r = lastPose;                              // live robot pose + camera field of view
+    const a = r.heading * Math.PI / 180, fx = Math.cos(a), fy = -Math.sin(a);
+    const cx = r.x + fx * 0.2, cy = r.y + fy * 0.2;
+    g.fillStyle = "rgba(242,177,52,0.13)"; g.beginPath(); g.moveTo(px(cx), py(cy));
+    for (let b = -45; b <= 45; b += 5) { const t = (r.heading + b) * Math.PI / 180; g.lineTo(px(cx + 4 * Math.cos(t)), py(cy - 4 * Math.sin(t))); }
+    g.closePath(); g.fill();
+    g.fillStyle = "#f2b134"; g.strokeStyle = "#0b0c0e"; g.lineWidth = 2;
+    g.beginPath(); g.arc(px(r.x), py(r.y), 0.2 / (2 * VIEW) * W, 0, 7); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(px(r.x), py(r.y)); g.lineTo(px(r.x + fx * 0.32), py(r.y + fy * 0.32)); g.stroke();
+  } catch (err) {}
+  setTimeout(drawMap, 600);
+}
+drawMap();
+</script>
+</body>
+</html>

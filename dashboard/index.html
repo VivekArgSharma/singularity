@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>Hackoween — Claude Bot</title>
+<style>
+:root { color-scheme: dark; --ink: #fff; --bg: #000; --pump: #ff8b00; --pump2: #ff9218; --ok: #9be7b0; --bad: #ff6b5a;
+        font-family: "Courier New", Courier, monospace; }
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); }
+.viewport { min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.stage-wrap { position: relative; flex: none; width: 1600px; height: 900px; }
+.stage { position: absolute; width: 1600px; height: 900px; transform-origin: top left;
+         background: #000 url("/dashboard/assets/title-screen.jpg") center / 1600px 900px no-repeat; }
+.menu-btn { position: absolute; border: 0; background: transparent; color: transparent; cursor: pointer; border-radius: 12px; }
+.menu-btn:hover, .menu-btn.sel { box-shadow: 0 0 0 3px var(--pump), 0 0 22px rgba(255, 139, 0, .45); }
+.menu-btn.sel::before { content: "▶"; position: absolute; left: -46px; top: 50%; transform: translateY(-50%); color: var(--pump); font-size: 30px; }
+#play.sel::before { content: ""; }
+#play { left: 576px; top: 573px; width: 448px; height: 66px; }
+#options { left: 700px; top: 648px; width: 210px; height: 42px; }
+#instructions { left: 655px; top: 701px; width: 302px; height: 42px; }
+#credits { left: 700px; top: 754px; width: 205px; height: 42px; }
+.conn { position: absolute; left: 22px; top: 18px; padding: 4px 10px; border: 2px solid #fff; border-radius: 8px; background: #000; font-size: 15px; letter-spacing: 1px; color: #cfcfcf; white-space: nowrap; }
+.conn b { color: var(--ok); } .conn b.bad { color: var(--bad); }
+.modal { position: absolute; z-index: 5; left: 300px; top: 120px; width: 1000px; height: 660px; padding: 28px 36px; overflow: auto;
+         border: 4px solid var(--ink); border-radius: 19px; background: #050505; box-shadow: inset 0 0 0 3px #050505, inset 0 0 0 5px #888, 0 0 0 2000px rgba(0,0,0,.72); }
+.modal[hidden] { display: none; }
+.modal header { position: relative; padding-bottom: 14px; border-bottom: 2px solid var(--ink); }
+.kicker { color: var(--pump2); font-size: 16px; letter-spacing: 2px; }
+.modal h2 { margin: 8px 0 0; font-size: 36px; letter-spacing: 3px; }
+.close { position: absolute; right: 0; bottom: 18px; border: 0; background: none; color: var(--ink); font: inherit; font-size: 18px; cursor: pointer; }
+.close:hover { color: var(--pump2); }
+.body { padding-top: 20px; font-size: 18px; line-height: 1.5; }
+.body p { margin: 0 0 14px; color: #ddd; }
+.body h3 { margin: 18px 0 8px; color: var(--pump2); font-size: 20px; letter-spacing: 1px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 10px; padding: 10px 14px; border: 2px solid var(--ink); background: #0c0c0c; }
+.row small { color: #aaa; }
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.card { padding: 12px 14px; border: 2px solid var(--ink); background: #0c0c0c; }
+.card strong { display: block; color: var(--pump2); margin-bottom: 4px; }
+code { color: var(--pump2); }
+.btn { padding: 8px 14px; border: 2px solid var(--ink); border-radius: 8px; background: var(--ink); color: var(--bg); cursor: pointer; font: inherit; font-weight: bold; text-decoration: none; }
+.btn:hover { background: var(--pump2); border-color: var(--pump2); }
+input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--pump2); }
+:focus-visible { outline: 3px solid var(--pump); outline-offset: 3px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<main class="viewport">
+ <div class="stage-wrap" id="wrap">
+  <section class="stage" id="stage" aria-label="Claude Bot title screen">
+   <h1 class="sr-only">Hackoween robotics simulation challenge: Claude Bot, autonomous robot agent</h1>
+   <button class="menu-btn sel" id="play" type="button" aria-label="Play">PLAY</button>
+   <button class="menu-btn" id="options" type="button" aria-label="Options">OPTIONS</button>
+   <button class="menu-btn" id="instructions" type="button" aria-label="Instructions">INSTRUCTIONS</button>
+   <button class="menu-btn" id="credits" type="button" aria-label="Credits">CREDITS</button>
+   <div class="conn" id="conn">connecting to the simulator…</div>
+
+   <section class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="m-title">
+     <header><span class="kicker">HACKOWEEN / CLAUDE BOT</span><h2 id="m-title"></h2><button class="close" id="m-close" type="button">✕ BACK</button></header>
+     <div class="body" id="m-body"></div>
+   </section>
+  </section>
+ </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const stage = $("stage"), wrap = $("wrap");
+const store = {get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
+               set(k, v) { try { localStorage.setItem(k, v); } catch {} }};
+function fit() { const s = Math.min(innerWidth / 1600, innerHeight / 900); stage.style.transform = `scale(${s})`;
+  wrap.style.width = `${1600 * s}px`; wrap.style.height = `${900 * s}px`; }
+addEventListener("resize", fit); fit();
+
+let S = null;
+async function ping() {
+  try { S = await (await fetch("/admin/status")).json();
+    $("conn").innerHTML = `simulator <b>online</b> · ${S.brain} agent${S.key_set ? "" : " (free local planner)"} · ${S.engine.fps} fps`;
+  } catch { $("conn").innerHTML = `simulator <b class="bad">offline</b> · start it: .venv\\Scripts\\python engine\\sim.py`; }
+  setTimeout(ping, 2000);
+}
+ping();
+
+const items = ["play", "options", "instructions", "credits"];
+let sel = 0;
+function select(i) { sel = (i + items.length) % items.length; items.forEach((id, k) => $(id).classList.toggle("sel", k === sel)); $(items[sel]).focus(); }
+items.forEach((id, k) => $(id).addEventListener("mouseenter", () => select(k)));
+addEventListener("keydown", e => {
+  if (!$("modal").hidden) { if (e.key === "Escape") closeModal(); return; }
+  if (e.key === "ArrowDown") { select(sel + 1); e.preventDefault(); }
+  if (e.key === "ArrowUp") { select(sel - 1); e.preventDefault(); }
+});
+
+$("play").onclick = () => { location.href = "/dashboard/console.html"; };
+const PANELS = {
+  options: ["OPTIONS", () => `
+    <div class="row"><span>AGENT</span><span>${S ? `${S.brain}${S.key_set ? " · API key set" : " · no API key (free camera-only planner)"}` : "simulator offline"}</span></div>
+    <p>Which agent drives the robot is set in the <code>.env</code> file: <code>USE_CLAUDE_API=true</code> (Claude, needs <code>ANTHROPIC_API_KEY</code>) or <code>false</code> (the free local planner). Restart the engine after changing it.</p>
+    <label class="row"><span>SLOWER VIEW REFRESH (light laptops)</span><input type="checkbox" id="o-slow"></label>
+    <label class="row"><span>ANIMATED LOG CURSOR</span><input type="checkbox" id="o-cursor"></label>
+    <div class="row"><span>ENGINEERING DASHBOARD (map, routes, all numbers)</span><a class="btn" href="/dashboard/engineering.html">OPEN</a></div>`],
+  instructions: ["INSTRUCTIONS", () => `
+    <p>Claude Bot is a wheeled robot in a simulated room. It sees <b>only its front camera</b> (640×480) plus a depth reading; every view on the console beside the robot camera is for people only.</p>
+    <h3>PLAY</h3>
+    <p>Type a task in the command bar, for example <code>Bring the red cube to the green square.</code> A new instruction replaces the running task; a question such as <code>Where are you?</code> is answered without stopping it. PAUSE, RESUME and STOP are next to the logs.</p>
+    <h3>OBJECTIVES</h3>
+    <div class="grid">
+      <div class="card"><strong>FETCH</strong>The six challenge commands: colour, shape, "round", tallest, farthest from the square, something to drink.</div>
+      <div class="card"><strong>BRAIN PUZZLE</strong>The cube is on a platform the wheels cannot climb: carry the ramp over, drive up, bring the cube down.</div>
+      <div class="card"><strong>COLOUR SORTING</strong>Five boxes to the corner square of their own colour.</div>
+      <div class="card"><strong>MAZE EXPLORER</strong>Map an unknown maze and stop on the magenta exit tile.</div>
+    </div>
+    <h3>RESULTS</h3>
+    <p>Every task is recorded from the robot camera (RUNS). Success is decided by the simulator, never by what the robot says. "Something to drink" is judged by hand with MARK PASS / MARK FAIL.</p>`],
+  credits: ["CREDITS", () => `
+    <div class="grid">
+      <div class="card"><strong>ENGINE &amp; SIMULATION</strong>Panda3D physics, robot, camera, missions</div>
+      <div class="card"><strong>AGENT &amp; LOGS</strong>Vision agent, tool loop, run logs</div>
+      <div class="card"><strong>CONSOLE &amp; VIDEOS</strong>Operator console, task control, clips</div>
+      <div class="card"><strong>MAPPING &amp; QA</strong>Robot map, A* / Dijkstra planning, tests</div>
+    </div>
+    <p style="margin-top:18px">Hackoween robotics simulation challenge — Membrane Robot track. Built with Python, Panda3D and Flask.</p>`]
+};
+function openModal(id) {
+  const [title, html] = PANELS[id];
+  $("m-title").textContent = title; $("m-body").innerHTML = html(); $("modal").hidden = false; $("m-close").focus();
+  if (id === "options") {
+    const sl = $("o-slow"), cu = $("o-cursor");
+    sl.checked = store.get("hk-slow", "0") === "1"; cu.checked = store.get("hk-cursor", "1") === "1";
+    sl.onchange = () => store.set("hk-slow", sl.checked ? "1" : "0"); cu.onchange = () => store.set("hk-cursor", cu.checked ? "1" : "0");
+  }
+}
+function closeModal() { $("modal").hidden = true; $(items[sel]).focus(); }
+["options", "instructions", "credits"].forEach(id => $(id).onclick = () => openModal(id));
+$("m-close").onclick = closeModal;
+$("play").focus();
+</script>
+</body>
+</html>

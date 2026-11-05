@@ -1,0 +1,17 @@
+{
+  "room": {"size": 6.0, "wall_height": 1.2, "ceiling": true},
+  "zone": {"center": [2.0, 1.8], "size": 1.2, "rgb": [0.12, 0.72, 0.22]},
+  "robot": {"start": [-2.4, 0.0], "heading": 0.0, "radius": 0.2},
+  "obstacles": [
+    {"shape": "cube", "rgb": [0.55, 0.55, 0.58], "size": 0.5, "height": 0.9, "pos": [-1.5, 0.0]},
+    {"shape": "cube", "rgb": [0.55, 0.55, 0.58], "size": 0.5, "height": 0.9, "pos": [1.0, 1.0]}
+  ],
+  "objects": [
+    {"id": "o1", "shape": "cube", "color_name": "red", "rgb": [0.86, 0.10, 0.10], "size": 0.30, "pos": [-0.5, -1.5]},
+    {"id": "o2", "shape": "sphere", "color_name": "red", "rgb": [0.86, 0.10, 0.10], "size": 0.30, "pos": [0.8, -0.4]},
+    {"id": "o3", "shape": "cube", "color_name": "blue", "rgb": [0.10, 0.28, 0.88], "size": 0.25, "pos": [-0.8, 1.4]},
+    {"id": "o4", "shape": "sphere", "color_name": "blue", "rgb": [0.10, 0.28, 0.88], "size": 0.30, "pos": [0.4, 1.9]},
+    {"id": "o5", "shape": "cylinder", "color_name": "yellow", "rgb": [0.96, 0.84, 0.08], "radius": 0.12, "height": 0.60, "lid": true, "pos": [1.6, -1.8]},
+    {"id": "o6", "shape": "cone", "color_name": "orange", "rgb": [1.00, 0.48, 0.04], "radius": 0.18, "height": 0.45, "pos": [-1.2, -1.0]}
+  ]
+}

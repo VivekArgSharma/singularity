@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>Hackoween — Claude Bot</title>
+<style>
+:root { color-scheme: dark; --ink: #fff; --bg: #000; --dim: #bdbdbd; --mute: #8a8a8a; --pump: #ff8b00; --pump2: #ff9218; --ok: #9be7b0; --bad: #ff6b5a;
+        font-family: "Courier New", Courier, monospace; }
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); }
+body { overflow: hidden; }
+button, input, select { font: inherit; }
+.viewport { height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.stage-wrap { position: relative; flex: none; width: 1600px; height: 900px; }
+.stage { position: absolute; width: 1600px; height: 900px; transform-origin: top left; background: var(--bg); overflow: hidden; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+.frame { position: absolute; border: 4px solid var(--ink); border-radius: 16px; background: var(--bg);
+         box-shadow: inset 0 0 0 3px var(--bg), inset 0 0 0 5px #6a6a6a; }
+.tag { position: absolute; z-index: 2; left: 14px; top: 12px; padding: 3px 10px; border: 2px solid var(--ink); border-radius: 8px;
+       background: var(--bg); font-size: 17px; letter-spacing: .5px; }
+.tag button { margin-left: 8px; padding: 0 6px; border: 2px solid var(--ink); border-radius: 6px; background: var(--bg); color: var(--ink); cursor: pointer; font-size: 14px; }
+.tag button.on { background: var(--ink); color: var(--bg); }
+/* header */
+.header { left: 8px; top: 4px; width: 1584px; height: 100px; display: block; }
+.header .logo { position: absolute; left: 47px; top: 2px; height: 88px; }
+.header .title { position: absolute; left: 160px; top: 2px; height: 90px; }
+.window-control { position: absolute; z-index: 11; top: 18px; width: 50px; height: 48px; border: 3px solid var(--ink); border-radius: 9px;
+                  background: var(--bg); color: var(--ink); cursor: pointer; font-size: 26px; line-height: 1; padding: 0; }
+.window-control:hover, .window-control.is-active { border-color: var(--pump); color: var(--pump); }
+.minimize-control { left: 1389px; } .maximize-control { left: 1452px; } .close-control { left: 1515px; }
+.window-state { position: absolute; z-index: 10; inset: 108px 0 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; background: var(--bg); }
+.window-state[hidden] { display: none; }
+.window-state p { margin: 0; font-size: 31px; letter-spacing: 3px; }
+.stage.is-closed .window-state { inset: 0; z-index: 12; }
+/* navigation */
+.navigation { position: absolute; left: 17px; top: 150px; width: 192px; }
+.nav { display: flex; align-items: center; gap: 16px; height: 62px; margin-bottom: 8px; padding-left: 14px; border: 3px solid transparent; border-radius: 12px;
+       color: var(--ink); text-decoration: none; font-size: 17px; font-weight: bold; letter-spacing: .5px; cursor: pointer; background: none; width: 100%; white-space: nowrap; }
+.nav img { width: 44px; height: 44px; object-fit: contain; image-rendering: pixelated; }
+.nav img.inv { filter: invert(1); }
+.nav:hover { border-color: #777; }
+.nav.active { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+.nav.active img { filter: none; }
+.nav.active img.inv { filter: invert(0); }
+.nav:not(.active) img.home { filter: invert(1); }
+/* panes */
+.p-main { left: 229px; top: 140px; width: 630px; height: 574px; overflow: hidden; }
+.p-cam { left: 862px; top: 140px; width: 320px; height: 254px; overflow: hidden; }
+.p-top { left: 862px; top: 398px; width: 320px; height: 316px; overflow: hidden; }
+.pane-img { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); object-fit: cover; border-radius: 10px; background: #111; }
+#v-look { object-fit: contain; background: #000; }
+#map { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); border-radius: 10px; background: #0b0b0b; }
+.hud { position: absolute; z-index: 2; left: 14px; right: 14px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 15px; }
+.hud span { padding: 2px 8px; border: 2px solid var(--ink); border-radius: 7px; background: rgba(0,0,0,.78); }
+.hud .warn { border-color: var(--pump); color: var(--pump); }
+/* logs */
+.p-logs { left: 1200px; top: 138px; width: 388px; height: 576px; padding: 18px 18px 14px; display: flex; flex-direction: column; }
+.logs-head { display: flex; align-items: center; gap: 14px; padding-bottom: 10px; border-bottom: 3px solid var(--ink); font-size: 30px; font-weight: bold; letter-spacing: 2px; }
+.logs-head img { width: 50px; height: 44px; object-fit: contain; }
+.taskbox { flex: none; max-height: 250px; overflow: auto; margin: 10px 0 8px; padding: 8px 10px; border: 2px solid var(--ink); border-radius: 9px; font-size: 14px; line-height: 1.4; }
+.taskbox b { color: var(--pump2); font-weight: bold; }
+.ctrls { display: flex; gap: 6px; margin: 6px 0 8px; }
+.btn { padding: 6px 10px; border: 2px solid var(--ink); border-radius: 8px; background: var(--bg); color: var(--ink); cursor: pointer; font-weight: bold; font-size: 15px; letter-spacing: .5px; }
+.btn:hover { border-color: var(--pump); color: var(--pump); }
+.btn.solid { background: var(--ink); color: var(--bg); }
+.btn.solid:hover { background: var(--pump2); border-color: var(--pump2); color: var(--bg); }
+#log-lines { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; font-size: 15px; line-height: 23px; }
+#log-lines div { flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#log-lines .operator { color: var(--pump2); } #log-lines .understood { color: #ffd27a; } #log-lines .reply, #log-lines .system { color: var(--ok); } #log-lines .warning, #log-lines .error { color: var(--bad); }
+.cursor { display: inline-block; width: 11px; height: 17px; background: var(--ink); vertical-align: middle; }
+@media (prefers-reduced-motion: no-preference) { body:not(.still-cursor) .cursor { animation: blink 1s steps(1) infinite; } }
+@keyframes blink { 50% { opacity: 0; } }
+/* prompt */
+.p-prompt { left: 258px; top: 752px; width: 1166px; height: 92px; }
+.p-prompt .chat { position: absolute; left: 18px; top: 18px; width: 56px; height: 46px; object-fit: contain; }
+.promptbox { position: absolute; left: 92px; top: 14px; width: 1056px; height: 56px; border: 3px solid var(--ink); border-radius: 10px; }
+#prompt { position: absolute; left: 14px; top: 4px; width: 950px; height: 42px; border: 0; background: var(--bg); color: var(--ink); font-size: 22px; outline: 0; }
+#prompt::placeholder { color: var(--dim); }
+.send { position: absolute; right: 6px; top: 3px; width: 70px; height: 44px; border: 0; border-radius: 8px; background: var(--ink); cursor: pointer; padding: 0; }
+.send img { width: 62px; height: 40px; object-fit: contain; }
+.send:hover { box-shadow: inset 0 0 0 3px var(--pump); }
+/* decoration */
+.deco { position: absolute; pointer-events: none; image-rendering: pixelated; }
+.corner-left { left: 0; top: 540px; } .corner-right { left: 1455px; top: 745px; } .grass { left: 245px; top: 850px; }
+/* section panel */
+.section-panel { position: absolute; z-index: 3; left: 227px; top: 138px; width: 956px; height: 576px; padding: 24px 30px; overflow: auto;
+                 border: 4px solid var(--ink); border-radius: 19px; background: #050505; box-shadow: inset 0 0 0 3px #050505, inset 0 0 0 5px #888; }
+.section-panel[hidden] { display: none; }
+.section-header { position: relative; padding-bottom: 14px; border-bottom: 2px solid var(--ink); }
+.section-kicker { color: var(--pump2); font-size: 16px; letter-spacing: 2px; }
+.section-header h2 { margin: 8px 0 0; font-size: 34px; letter-spacing: 2px; }
+.panel-home { position: absolute; right: 0; bottom: 18px; color: var(--ink); font-size: 17px; text-decoration: none; cursor: pointer; background: none; border: 0; }
+.panel-home:hover { color: var(--pump2); }
+.section-body { padding-top: 20px; font-size: 17px; line-height: 1.45; }
+.intro { margin: 0 0 16px; color: #ccc; }
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.card { padding: 14px 16px; border: 2px solid var(--ink); background: #0c0c0c; }
+.card strong { display: block; margin-bottom: 8px; color: var(--pump2); font-size: 20px; letter-spacing: 1px; }
+.card .meta { color: #ddd; font-size: 15px; }
+.card .verify { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #555; font-size: 14px; color: #cfcfcf; }
+.card .verify i { font-style: normal; color: var(--ok); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 10px; padding: 10px 14px; border: 2px solid var(--ink); background: #0c0c0c; }
+.row small { color: #aaa; }
+.chip { display: inline-block; margin: 3px 4px 3px 0; padding: 4px 9px; border: 2px solid var(--ink); border-radius: 8px; background: var(--bg); color: var(--ink); cursor: pointer; font-size: 14px; }
+.chip:hover { border-color: var(--pump); color: var(--pump); }
+.field { width: 70px; padding: 4px 6px; border: 2px solid var(--ink); border-radius: 6px; background: var(--bg); color: var(--ink); }
+select.field { width: auto; }
+video { width: 100%; max-height: 300px; border: 2px solid var(--ink); background: #000; margin-top: 10px; }
+.ok { color: var(--ok); } .bad { color: var(--bad); } .pump { color: var(--pump2); }
+.stage:is(.is-minimized, .is-closed) :is(.navigation, .section-panel, .p-main, .p-cam, .p-top, .p-logs, .p-prompt) { visibility: hidden; }
+:focus-visible { outline: 3px solid var(--pump); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main class="viewport" aria-label="Hackoween Claude Bot dashboard">
+ <div class="stage-wrap" id="stage-wrap">
+  <section class="stage" id="stage">
+   <h1 class="sr-only">Hackoween Claude Bot</h1>
+   <a class="frame header" href="/" title="Back to the title screen">
+     <img class="logo" src="/dashboard/assets/logo-robot.png" alt="">
+     <img class="title" src="/dashboard/assets/title.png" alt="Hackoween robotics simulation challenge, Claude Bot">
+   </a>
+   <button class="window-control minimize-control" id="minimize-window" type="button" aria-label="Minimize" title="Minimize">–</button>
+   <button class="window-control maximize-control" id="maximize-window" type="button" aria-label="Maximize" title="Maximize">□</button>
+   <button class="window-control close-control" id="close-window" type="button" aria-label="Close" title="Close">✕</button>
+   <section class="window-state" id="window-state" hidden><p id="window-state-message"></p><button class="btn solid" id="restore-window" type="button">RESTORE</button></section>
+
+   <nav class="navigation" aria-label="Sections">
+     <button class="nav active" data-view="home"><img class="home" src="/dashboard/assets/ico-home.png" alt="">HOME</button>
+     <button class="nav" data-view="objectives"><img src="/dashboard/assets/ico-objectives.png" alt="">OBJECTIVES</button>
+     <button class="nav" data-view="free-reign"><img src="/dashboard/assets/ico-free.png" alt="">FREE REIGN</button>
+     <button class="nav" data-view="runs"><img src="/dashboard/assets/ico-runs.png" alt="">RUNS</button>
+     <button class="nav" data-view="settings"><img src="/dashboard/assets/ico-settings.png" alt="">SETTINGS</button>
+   </nav>
+
+   <div class="frame p-main"><span class="tag">robot camera 640×480 – what the agent sees</span><img class="pane-img" id="v-look" alt="What the robot sees">
+     <div class="hud" id="hud"></div></div>
+   <div class="frame p-cam"><span class="tag">chase view – people only</span><img class="pane-img" id="v-chase" alt="Third-person view of the robot"></div>
+   <div class="frame p-top"><span class="tag" id="toptag">top-down <button id="mapbtn" type="button" title="Show the map the robot built from its own sensors">robot map</button></span>
+     <img class="pane-img" id="v-top" alt="Top-down view"><canvas id="map" width="600" height="600" hidden></canvas></div>
+
+   <section class="frame p-logs" aria-label="Logs">
+     <div class="logs-head"><img src="/dashboard/assets/ico-logs.png" alt="">LOGS</div>
+     <div class="taskbox" id="taskbox">Waiting for task…</div>
+     <div class="ctrls"><button class="btn" id="pause">PAUSE</button><button class="btn" id="resume">RESUME</button><button class="btn" id="stop">STOP</button></div>
+     <div id="log-lines" aria-live="polite"></div><span class="cursor" aria-hidden="true"></span>
+   </section>
+
+   <form class="frame p-prompt" id="prompt-form" autocomplete="off">
+     <img class="chat" src="/dashboard/assets/ico-chat.png" alt="">
+     <div class="promptbox"><label class="sr-only" for="prompt">Describe a task or ask Claude Bot anything</label>
+       <input id="prompt" type="text" placeholder="Describe a task or ask Claude Bot anything..." spellcheck="false">
+       <button class="send" type="submit" aria-label="Send"><img src="/dashboard/assets/ico-send.png" alt=""></button></div>
+   </form>
+
+   <img class="deco corner-left" src="/dashboard/assets/corner-left.png" alt="">
+   <img class="deco grass" src="/dashboard/assets/grass.png" alt="">
+   <img class="deco corner-right" src="/dashboard/assets/corner-right.png" alt="">
+
+   <section class="section-panel" id="section-panel" hidden aria-live="polite">
+     <header class="section-header"><span class="section-kicker">HACKOWEEN / CLAUDE BOT</span><h2 id="section-title"></h2>
+       <button class="panel-home" data-view="home">← HOME</button></header>
+     <div class="section-body" id="section-body"></div>
+   </section>
+  </section>
+ </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const stage = $("stage"), wrap = $("stage-wrap");
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const post = async (p, b) => (await fetch(p, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(b || {})})).json();
+const store = {get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
+               set(k, v) { try { localStorage.setItem(k, v); } catch {} }};
+let S = null, live = false, view = "home", showMap = store.get("hk-map", "0") === "1";
+let slowViews = store.get("hk-slow", "0") === "1";
+document.body.classList.toggle("still-cursor", store.get("hk-cursor", "1") === "0");
+
+/* ---------- stage fit + window controls (behaviour of the original prototype) ---------- */
+function fitStage() {
+  const fit = Math.min(Math.max(320, innerWidth) / 1600, Math.max(320, innerHeight) / 900);
+  const scale = Math.max(0.4, fit);                   // fill the window, 16:9, at any size
+  stage.style.transform = `scale(${scale})`; wrap.style.width = `${1600 * scale}px`; wrap.style.height = `${900 * scale}px`;
+}
+addEventListener("resize", fitStage); fitStage();
+function windowState(cls, msg, btn) {
+  stage.classList.remove("is-minimized", "is-closed"); if (cls) stage.classList.add(cls);
+  $("window-state").hidden = !cls; $("window-state-message").textContent = msg || ""; $("restore-window").textContent = btn || "RESTORE";
+}
+$("minimize-window").onclick = () => windowState("is-minimized", "CLAUDE BOT MINIMIZED", "RESTORE");
+$("close-window").onclick = () => windowState("is-closed", "CLAUDE BOT CLOSED", "REOPEN");
+$("restore-window").onclick = () => windowState(null);
+$("maximize-window").onclick = async () => {
+  if (document.fullscreenElement) { try { await document.exitFullscreen(); } catch {} return; }
+  stage.classList.add("is-maximized"); fitStage();
+  try { await document.documentElement.requestFullscreen(); } catch {}
+};
+document.addEventListener("fullscreenchange", () => {
+  const on = !!document.fullscreenElement; stage.classList.toggle("is-maximized", on); $("maximize-window").classList.toggle("is-active", on); fitStage();
+});
+
+/* ---------- live views ---------- */
+function pump(img, name, idle, busy) {
+  const next = () => setTimeout(load, (live ? busy : idle) * (slowViews ? 2.5 : 1));
+  function load() { if (name === "top" && showMap) return next(); const t = new Image();
+    t.onload = () => { img.src = t.src; next(); }; t.onerror = next; t.src = `/admin/view/${name}?t=${Date.now()}`; }
+  load();
+}
+pump($("v-look"), "look", 1000, 200); pump($("v-chase"), "chase", 1500, 400); pump($("v-top"), "top", 2000, 600);
+function setMapMode() { $("map").hidden = !showMap; $("v-top").hidden = showMap; $("mapbtn").classList.toggle("on", showMap);
+  $("toptag").firstChild.textContent = showMap ? "robot map " : "top-down "; }
+$("mapbtn").onclick = () => { showMap = !showMap; store.set("hk-map", showMap ? "1" : "0"); setMapMode(); };
+setMapMode();
+
+/* ---------- logs, task box, HUD ---------- */
+let t0 = null;                                       // time of the first event the engine reports
+const stamp = ts => { if (t0 === null) t0 = ts; const e = Math.max(0, ts - t0); const m = Math.floor(e / 60), s = e - 60 * m;
+  return `[${String(m).padStart(2, "0")}:${s.toFixed(3).padStart(6, "0")}]`; };
+function renderStatus(s) {
+  const r = s.robot, t = s.task, m = s.mission;
+  live = !!t && ["Starting", "Running"].includes(t.status);
+  const und = t && t.understood && t.understood.toLowerCase().replace(/[.!?]$/, "") !== t.command.toLowerCase().replace(/[.!?]$/, "")
+    ? `<br><span class="pump">understood as:</span> ${esc(t.understood)}` : "";
+  $("taskbox").innerHTML = (t ? `<b>${esc(t.status.toUpperCase())}</b> · ${esc(t.command)}${und}<br>${esc(t.result || t.thought || "…")}`
+                              : `Waiting for task… <span class="pump">(${esc(s.brain)} agent)</span>`) +
+    (m ? `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #555"><b>${esc(m.title.toUpperCase())}</b> · verified by the simulator<br>${missionVerify(m.mission)}</div>` : "");
+  const room = Math.max(3, Math.floor($("log-lines").clientHeight / 23));   // only what fits in the panel
+  $("log-lines").innerHTML = (s.feed || []).slice(-room).map(f => `<div class="${esc(f.type)}" title="${esc(f.text)}">${stamp(f.ts)}  ${esc(f.text)}</div>`).join("");
+  const out = r.outcome ? `<span class="${r.outcome === "pass" ? "" : "warn"}">outcome ${esc(r.outcome)}</span>` : "";
+  $("hud").innerHTML = `<span>${esc(r.state)}</span><span>(${r.x.toFixed(2)}, ${r.y.toFixed(2)}) ${r.heading.toFixed(0)}°</span>` +
+    `<span>${r.holding ? "holding" : "hand empty"}</span><span>${r.sim_seconds.toFixed(1)} s · ${r.path_length.toFixed(1)} m</span>` +
+    `<span class="${r.collisions ? "warn" : ""}">bumps ${r.collisions}</span>${out}` +
+    (m ? `<span class="warn">${esc(m.title)} · ${esc(m.state)}</span>` : "") + (s.engine.paused ? `<span class="warn">PAUSED</span>` : "");
+}
+async function poll() {
+  try { S = await (await fetch("/admin/status")).json(); renderStatus(S); if (view !== "home") refreshSection(); } catch {}
+  setTimeout(poll, 500);
+}
+poll();
+
+/* ---------- robot map (the map the robot built itself) ---------- */
+const COL = {u: "#000", s: "#262626", f: "#5c5c5c", r: "#9a9a9a", h: "#1a1a1a", o: "#ffffff", i: "#3a2a12"};
+const VIEW = 3.4;
+async function drawMap() {
+  if (showMap) try {
+    const d = await (await fetch("/admin/map")).json();
+    const cv = $("map"), g = cv.getContext("2d"), W = cv.width;
+    const px = x => (x + VIEW) / (2 * VIEW) * W, py = y => (VIEW - y) / (2 * VIEW) * W;
+    g.fillStyle = "#000"; g.fillRect(0, 0, W, W);
+    const m = d.map;
+    if (m) {
+      const n = m.n, c = m.cell, h = m.half, sz = c / (2 * VIEW) * W + 0.6;
+      for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const k = m.grid[j * n + i]; if (k === "u") continue;
+        g.fillStyle = COL[k] || "#333"; g.fillRect(px(-h + i * c), py(-h + (j + 1) * c), sz, sz); }
+      const trail = (S && S.trail) || [];
+      if (trail.length > 1) { g.strokeStyle = "#cfcfcf"; g.lineWidth = 2; g.beginPath();
+        trail.forEach((p, i) => i ? g.lineTo(px(p[0]), py(p[1])) : g.moveTo(px(p[0]), py(p[1]))); g.stroke(); }
+      const pl = m.plan;
+      if (pl && pl.route) { g.strokeStyle = "#ff8b00"; g.setLineDash([10, 7]); g.lineWidth = 3; g.beginPath();
+        pl.route.forEach((p, i) => i ? g.lineTo(px(p[0]), py(p[1])) : g.moveTo(px(p[0]), py(p[1]))); g.stroke(); g.setLineDash([]);
+        g.beginPath(); g.arc(px(pl.x), py(pl.y), 12, 0, 7); g.stroke(); }
+      g.font = "bold 17px Courier New, monospace"; g.fillStyle = "#fff";
+      for (const [name, o] of Object.entries(m.objects || {})) g.fillText(name, px(o.x) + 10, py(o.y) - 8);
+      g.fillStyle = "#ff9218"; g.fillText(`seen ${(m.stats.coverage_est * 100).toFixed(0)}%  views ${m.stats.observations}`, 14, W - 16);
+    } else { g.fillStyle = "#bdbdbd"; g.font = "20px Courier New"; g.fillText("no map yet: give the robot a task", 60, W / 2); }
+    if (S) { const r = S.robot, a = r.heading * Math.PI / 180, fx = Math.cos(a), fy = -Math.sin(a);
+      g.fillStyle = "rgba(255,139,0,0.16)"; g.beginPath(); g.moveTo(px(r.x + fx * .2), py(r.y + fy * .2));
+      for (let b = -45; b <= 45; b += 5) { const t = (r.heading + b) * Math.PI / 180; g.lineTo(px(r.x + fx * .2 + 4 * Math.cos(t)), py(r.y + fy * .2 - 4 * Math.sin(t))); }
+      g.closePath(); g.fill();
+      g.fillStyle = "#ff8b00"; g.strokeStyle = "#000"; g.lineWidth = 3; g.beginPath(); g.arc(px(r.x), py(r.y), 0.2 / (2 * VIEW) * W, 0, 7); g.fill(); g.stroke(); }
+  } catch {}
+  setTimeout(drawMap, 600);
+}
+drawMap();
+
+/* ---------- commands ---------- */
+async function instruct(text) {
+  if (!text.trim()) return;
+  const r = await post("/admin/instruct", {text});
+  if (r.reply) { /* status question: the answer lands in the feed */ }
+}
+$("prompt-form").onsubmit = e => { e.preventDefault(); const v = $("prompt").value; $("prompt").value = ""; instruct(v); };
+$("pause").onclick = () => post("/admin/pause"); $("resume").onclick = () => post("/admin/resume"); $("stop").onclick = () => post("/admin/stop");
+
+/* ---------- sections ---------- */
+const TITLES = {home: "HOME", objectives: "OBJECTIVES", "free-reign": "FREE REIGN", runs: "RUNS", settings: "SETTINGS"};
+const PS = ["Bring the red cube to the green square.", "Bring the round red thing.", "Bring the tallest object.",
+            "Bring the blue sphere.", "Bring the cube that is farthest from the green square.", "Bring me something to drink."];
+const MISSIONS = [
+  ["brain_puzzle", "BRAIN PUZZLE", "The red cube waits on a purple platform the wheels cannot climb. Carry the yellow ramp to an edge, drive up, take the cube, come down, deliver."],
+  ["colour_sort", "COLOUR SORTING", "Five boxes (red, blue, green, two yellow) to the corner square of their own colour."],
+  ["maze", "MAZE EXPLORER", "Unknown grid maze. Build a map from the camera and depth ray, backtrack only out of dead ends, stop on the magenta exit."]];
+function missionVerify(id) {
+  const m = S && S.mission;
+  if (!m || m.mission !== id) return "not running";
+  let extra = "";
+  const ORDER = ["stair_carried", "stair_placed", "platform_reached", "cube_carried", "ground_reached", "cube_delivered"];
+  if (m.checks) extra = ORDER.filter(k => k in m.checks).map(k => `${m.checks[k] ? "<i>✔</i>" : "○"} ${k.replace(/_/g, " ")}`).join("<br>");
+  if (m.total !== undefined) extra = `${m.delivered}/${m.total} in the right square · wrong drops ${m.wrong_drops}`;
+  if (m.cells !== undefined) extra = `${m.cells_visited}/${m.cells} cells visited` + (m.shortest_route_cells ? ` · shortest route ${m.shortest_route_cells}` : "");
+  if (extra === m.state) extra = "";
+  return `<b>${esc(m.state)}</b>${m.outcome ? ` · outcome <span class="${m.outcome === "pass" ? "ok" : "bad"}">${esc(m.outcome)}</span>` : ""}${extra ? "<br>" + extra : ""}`;
+}
+function sectionHTML(v) {
+  if (v === "objectives") return `
+    <p class="intro">Pick a task. Fetch uses the problem-statement commands; missions build their own seeded scene. Results are verified by the simulator, not by what the robot says.</p>
+    <div class="grid">
+      <div class="card"><strong>FETCH</strong><div class="meta">${PS.map(c => `<button class="chip" data-cmd="${esc(c)}">${esc(c)}</button>`).join("")}</div></div>
+      ${MISSIONS.map(([id, name, d]) => `<div class="card"><strong>${name}</strong><div class="meta">${d}</div>
+        <div style="margin-top:10px"><button class="btn solid" data-mission="${id}">▶ START</button></div>
+        <div class="verify" id="verify-${id}">${missionVerify(id)}</div></div>`).join("")}
+    </div>`;
+  if (v === "free-reign") return `
+    <p class="intro">Sandbox: any level, any seed, any instruction. A new instruction replaces the running task; questions ("where are you?") do not.</p>
+    <div class="row"><span>LEVEL <select class="field" id="lvl"><option>level1</option><option>level2</option><option>obstacles</option><option>narrow</option></select>
+      seed <input class="field" type="number" id="lseed" value="0" min="0" max="99"></span><button class="btn solid" id="resetbtn">RESET SCENE</button></div>
+    <div class="row"><span>QUICK</span><span>${["Explore the room.", "Circle around the orange cone twice.", "Find the blue sphere.", "Inspect the red cube.", "Go to the green square.", "Where are you?"]
+       .map(c => `<button class="chip" data-cmd="${esc(c)}">${esc(c)}</button>`).join("")}</span></div>
+    <div class="row"><span>JUDGE (for "needs_manual")</span><span><button class="btn" id="vpass">MARK PASS</button> <button class="btn" id="vfail">MARK FAIL</button></span></div>
+    <div class="row"><span>ROBOT</span><small id="fr-robot"></small></div>`;
+  if (v === "runs") return `<p class="intro">Every task is recorded from the robot camera (1440×1080, 30 fps, command caption for 2 s). Click to play.</p>
+    <div id="runs-list">loading…</div><video id="player" controls hidden></video>`;
+  if (v === "settings") return `
+    <div class="row"><span>AGENT</span><span id="set-agent"></span></div>
+    <p class="intro">Set in the .env file (USE_CLAUDE_API=true / false), then restart the engine.</p>
+    <div class="row"><span>ENGINE</span><span id="set-engine"></span></div>
+    <label class="row"><span>ANIMATED LOG CURSOR</span><input type="checkbox" id="set-cursor"></label>
+    <label class="row"><span>SLOWER VIEW REFRESH (light laptops)</span><input type="checkbox" id="set-slow"></label>
+    <div class="row"><span>ENGINEERING DASHBOARD (all map and route numbers)</span><a class="btn" href="/dashboard/engineering.html" target="_blank">OPEN</a></div>`;
+  return "";
+}
+function wireSection(v) {
+  document.querySelectorAll("#section-body [data-cmd]").forEach(b => b.onclick = () => { instruct(b.dataset.cmd); show("home"); });
+  document.querySelectorAll("#section-body [data-mission]").forEach(b => b.onclick = async () => {
+    const id = b.dataset.mission; const seed = Math.floor(Math.random() * 4);     // one of the tested layouts
+    b.textContent = "STARTING…"; const r = await post("/admin/mission", {mission: id, seed});
+    if (r.error) { b.textContent = "ERROR"; return; } show("home");
+  });
+  if (v === "free-reign") {
+    $("resetbtn").onclick = async () => { await post("/admin/reset", {level: $("lvl").value, seed: parseInt($("lseed").value || "0", 10)}); show("home"); };
+    $("vpass").onclick = () => post("/admin/verdict", {pass: true}); $("vfail").onclick = () => post("/admin/verdict", {pass: false});
+  }
+  if (v === "runs") loadRuns();
+  if (v === "settings") {
+    const c = $("set-cursor"); c.checked = store.get("hk-cursor", "1") === "1";
+    c.onchange = () => { store.set("hk-cursor", c.checked ? "1" : "0"); document.body.classList.toggle("still-cursor", !c.checked); };
+    const sl = $("set-slow"); sl.checked = slowViews; sl.onchange = () => { slowViews = sl.checked; store.set("hk-slow", slowViews ? "1" : "0"); };
+
+  }
+}
+function refreshSection() {
+  if (!S) return;
+  if (view === "objectives") for (const [id] of MISSIONS) { const el = $(`verify-${id}`); if (el) el.innerHTML = missionVerify(id); }
+  if (view === "free-reign" && $("fr-robot")) { const r = S.robot; $("fr-robot").textContent = `${r.state} · outcome ${r.outcome || "–"} · retries ${r.retries}`; }
+  if (view === "settings" && $("set-agent")) {
+    $("set-agent").textContent = S.brain === "claude" ? `Claude · ${S.model}` : "free local planner";
+    $("set-engine").textContent = `${S.engine.fps} fps · ${S.engine.sim_steps} steps`;
+  }
+}
+async function loadRuns() {
+  try {
+    const d = await (await fetch("/admin/runs")).json();
+    $("runs-list").innerHTML = d.runs.length ? d.runs.slice(0, 12).map(r => `<div class="row"><span>${esc(r.command || r.run_id)}<br><small>${esc(r.run_id)} · ${r.frames} frames</small></span>
+      <span>${r.videos.map(v => `<button class="chip" data-run="${esc(r.run_id)}" data-v="${esc(v)}">${v.includes("clip20") ? "20 s CLIP" : "VIDEO"}</button>`).join("")}</span></div>`).join("")
+      : `<p class="intro">No runs yet.</p>`;
+    document.querySelectorAll("#runs-list [data-v]").forEach(a => a.onclick = () => { const p = $("player"); p.hidden = false;
+      p.src = `/admin/runs/${a.dataset.run}/${a.dataset.v}`; p.play(); });
+  } catch { $("runs-list").textContent = "could not load runs"; }
+}
+function show(v) {
+  view = TITLES[v] ? v : "home";
+  document.querySelectorAll(".nav").forEach(n => n.classList.toggle("active", n.dataset.view === view));
+  $("section-panel").hidden = view === "home";
+  if (view !== "home") { $("section-title").textContent = TITLES[view]; $("section-body").innerHTML = sectionHTML(view); wireSection(view); refreshSection(); }
+  const u = new URL(location.href); if (view === "home") u.searchParams.delete("view"); else u.searchParams.set("view", view);
+  history.replaceState(null, "", u);
+}
+document.querySelectorAll("[data-view]").forEach(n => n.onclick = () => show(n.dataset.view));
+show(new URLSearchParams(location.search).get("view") || "home");
+</script>
+</body>
+</html>

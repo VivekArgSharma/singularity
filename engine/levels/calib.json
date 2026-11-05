@@ -1,0 +1,10 @@
+{
+  "room": {"size": 6.0, "wall_height": 1.2, "ceiling": true},
+  "zone": {"center": [-2.0, 2.0], "size": 1.0, "rgb": [0.12, 0.72, 0.22]},
+  "robot": {"start": [0.0, 0.0], "heading": 0.0, "radius": 0.2},
+  "objects": [
+    {"id": "c1", "shape": "sphere", "color_name": "red", "rgb": [0.95, 0.05, 0.05], "size": 0.30, "pos": [1.732, -1.0]},
+    {"id": "c2", "shape": "sphere", "color_name": "blue", "rgb": [0.05, 0.05, 0.95], "size": 0.30, "pos": [1.732, 1.0]},
+    {"id": "c3", "shape": "sphere", "color_name": "yellow", "rgb": [0.95, 0.95, 0.05], "size": 0.30, "pos": [2.5, 0.0]}
+  ]
+}
