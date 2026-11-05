@@ -212,7 +212,7 @@ function pump(img, name, idle, busy) {
     t.onload = () => { img.src = t.src; next(); }; t.onerror = next; t.src = `/admin/view/${name}?t=${Date.now()}`; }
   load();
 }
-pump($("v-look"), "look", 1000, 200); pump($("v-chase"), "chase", 1500, 400); pump($("v-top"), "top", 2000, 600);
+pump($("v-look"), "look", 1000, 100); pump($("v-chase"), "chase", 1500, 200); pump($("v-top"), "top", 2000, 300);
 function setMapMode() { $("map").hidden = !showMap; $("v-top").hidden = showMap; $("mapbtn").classList.toggle("on", showMap);
   $("toptag").firstChild.textContent = showMap ? "robot map " : "top-down "; }
 $("mapbtn").onclick = () => { showMap = !showMap; store.set("hk-map", showMap ? "1" : "0"); setMapMode(); };
